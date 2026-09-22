@@ -28,19 +28,37 @@ export const useJamUniversalKeyboardShortcuts = (actions: JamGlobalActions) => {
     const handleUniversalKeyDown = (e: KeyboardEvent) => {
       
       // ========================================================
-      // أولاً: معالجة أزرار التحكم الصارمة [Enter - Esc - Delete] (تشتغل فقط إذا كانت هناك نافذة مفتوحة)
+      // أولاً: التحقق من حقول الإدخال النصي ومرحلة تركيب الحروف (IME Composition)
+      // حماية كتابة النصوص والأسماء في الهواتف ولوحات المفاتيح اللمسية
+      // ========================================================
+      const target = e.target as HTMLElement | null;
+      const isTypingInField = target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable
+      );
+
+      // إذا كان المستخدم يكتب بنشاط في أي حقل، أو أثناء تركيب الحروف العربية، لا يتم اعتراض المفاتيح
+      if (isTypingInField || e.isComposing) {
+        // نسمح فقط بـ Escape لإلغاء النوافذ إذا رغب المستخدم
+        if (e.key === 'Escape' && actions.activeModalIsOpen) {
+          e.preventDefault();
+          actions.onGlobalCancel();
+        }
+        return;
+      }
+
+      // ========================================================
+      // ثانياً: معالجة أزرار التحكم الصارمة [Enter - Esc - Delete] (تشتغل فقط إذا كانت هناك نافذة مفتوحة ولم يكن المستخدم بداخل حقل كتابة)
       // ========================================================
       if (actions.activeModalIsOpen) {
         switch (e.key) {
           case 'Enter':
-            // منع تداخل الـ Enter مع النزول للسطر في نصوص المفكرات والملاحظات
-            if ((e.target as HTMLElement).tagName !== 'TEXTAREA') {
-              e.preventDefault();
-              console.log('⌨️ نظام التحكم الفوري: تم ترحيل واعتِماد الحركة ماليّاً عبر مفتاح [Enter]');
-              actions.onGlobalConfirm();
-              return; // الخروج الفوري لمنع تداخل الأحداث
-            }
-            break;
+            e.preventDefault();
+            console.log('⌨️ نظام التحكم الفوري: تم ترحيل واعتِماد الحركة ماليّاً عبر مفتاح [Enter]');
+            actions.onGlobalConfirm();
+            return;
 
           case 'Escape':
             e.preventDefault();

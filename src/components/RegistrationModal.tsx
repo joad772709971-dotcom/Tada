@@ -99,6 +99,24 @@ export default function RegistrationModal({ isOpen, onClose }: RegistrationModal
     onClose();
   };
 
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const form = e.currentTarget.form;
+      if (form) {
+        const elements = Array.from(form.elements) as HTMLElement[];
+        const currentIndex = elements.indexOf(e.currentTarget);
+        for (let i = currentIndex + 1; i < elements.length; i++) {
+          const el = elements[i];
+          if (el.tagName === 'INPUT' && !el.hasAttribute('disabled') && (el as HTMLInputElement).type !== 'hidden') {
+            el.focus();
+            break;
+          }
+        }
+      }
+    }
+  };
+
   const handleFieldChange = (field: string, val: any) => {
     if (error) setError('');
     setFormData(prev => ({ ...prev, [field]: val }));
@@ -310,6 +328,7 @@ export default function RegistrationModal({ isOpen, onClose }: RegistrationModal
                         className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-right text-sm text-white placeholder-white/30 outline-none focus:border-yellow-400 transition-colors"
                         placeholder="مثال: أحمد عبد الله اليماني"
                         value={formData.ownerName}
+                        onKeyDown={handleInputKeyDown}
                         onChange={e => {
                           const val = e.target.value;
                           setFormData(prev => ({ ...prev, ownerName: val }));
@@ -329,6 +348,7 @@ export default function RegistrationModal({ isOpen, onClose }: RegistrationModal
                         className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-right text-sm text-white placeholder-white/30 outline-none focus:border-yellow-400 transition-colors"
                         placeholder="مثال: آفاق تليكوم"
                         value={formData.shopName}
+                        onKeyDown={handleInputKeyDown}
                         onChange={e => {
                           const val = e.target.value;
                           setFormData(prev => ({ ...prev, shopName: val }));
@@ -348,6 +368,7 @@ export default function RegistrationModal({ isOpen, onClose }: RegistrationModal
                         className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-right text-sm text-white placeholder-white/30 outline-none focus:border-yellow-400 transition-colors"
                         placeholder="مثال: صنعاء - شارع حدة"
                         value={formData.location}
+                        onKeyDown={handleInputKeyDown}
                         onChange={e => {
                           const val = e.target.value;
                           setFormData(prev => ({ ...prev, location: val }));
@@ -367,6 +388,7 @@ export default function RegistrationModal({ isOpen, onClose }: RegistrationModal
                         className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-right text-sm text-white placeholder-white/30 outline-none focus:border-yellow-400 transition-colors font-mono"
                         placeholder="مثال: 772315106"
                         value={formData.phone}
+                        onKeyDown={handleInputKeyDown}
                         onChange={e => {
                           const val = e.target.value;
                           setFormData(prev => ({ ...prev, phone: val }));

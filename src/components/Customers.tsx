@@ -1415,6 +1415,11 @@ export default function Customers({ profile }: CustomersProps) {
                       placeholder="مثال: أحمد محمد الشامي"
                       className="input-field w-full text-xs font-bold" 
                       value={formData.name} 
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                        }
+                      }}
                       onChange={(e) => setFormData({...formData, name: e.target.value})} 
                     />
                   </div>
@@ -1426,6 +1431,11 @@ export default function Customers({ profile }: CustomersProps) {
                         placeholder="مثال: مركز النور التجاري"
                         className="input-field w-full text-xs font-bold" 
                         value={formData.shopName} 
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                          }
+                        }}
                         onChange={(e) => setFormData({...formData, shopName: e.target.value})} 
                       />
                     </div>

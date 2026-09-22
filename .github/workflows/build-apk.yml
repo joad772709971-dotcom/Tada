@@ -70,7 +70,12 @@ jobs:
           const config = {
             appId: '${{ matrix.variant.package_id }}',
             appName: '${{ matrix.variant.name_ar }}',
-            webDir: 'dist'
+            webDir: 'dist',
+            android: {
+              allowMixedContent: true,
+              captureInput: false,
+              backgroundColor: '#05070e'
+            }
           };
           fs.writeFileSync('capacitor.config.json', JSON.stringify(config, null, 2));
           "
@@ -121,6 +126,9 @@ jobs:
             }
             if (!manifest.includes('android:requestLegacyExternalStorage')) {
               manifest = manifest.replace('<application', '<application android:requestLegacyExternalStorage=\"true\"');
+            }
+            if (!manifest.includes('android:windowSoftInputMode')) {
+              manifest = manifest.replace('<activity', '<activity android:windowSoftInputMode=\"adjustResize\"');
             }
 
             // Permissions to ensure all hardware features (Bluetooth, Camera, Audio, Network) work

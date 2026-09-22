@@ -24,7 +24,7 @@ const config: CapacitorConfig = {
   },
   android: {
     allowMixedContent: true,
-    captureInput: true,
+    captureInput: false,
     backgroundColor: "#05070e"
   },
   // Request Bluetooth Connect, Bluetooth Scan, Wake Lock & Media Permissions

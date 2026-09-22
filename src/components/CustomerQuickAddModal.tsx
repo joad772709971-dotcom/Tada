@@ -64,6 +64,24 @@ export default function CustomerQuickAddModal({
     setCode(`CUST-${Math.floor(1000 + Math.random() * 9000)}`);
   };
 
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const form = e.currentTarget.form;
+      if (form) {
+        const elements = Array.from(form.elements) as HTMLElement[];
+        const currentIndex = elements.indexOf(e.currentTarget);
+        for (let i = currentIndex + 1; i < elements.length; i++) {
+          const el = elements[i];
+          if (el.tagName === 'INPUT' && !el.hasAttribute('disabled') && (el as HTMLInputElement).type !== 'hidden') {
+            el.focus();
+            break;
+          }
+        }
+      }
+    }
+  };
+
   const handleTierChange = (tier: 'retail' | 'wholesale' | 'mega_wholesale' | 'importer' | 'individual') => {
     setBusinessTier(tier);
     if (tier === 'individual') {
@@ -254,9 +272,9 @@ export default function CustomerQuickAddModal({
                 <input
                   type="text"
                   required
-                  autoFocus
                   placeholder="مثال: يحيى صالح أحمد"
                   value={name}
+                  onKeyDown={handleInputKeyDown}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full p-2.5 sm:p-3 bg-gray-50 dark:bg-navy-950 border border-gray-200 dark:border-navy-700 rounded-xl text-xs font-black outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition"
                 />
@@ -272,6 +290,7 @@ export default function CustomerQuickAddModal({
                   required
                   placeholder="777000000"
                   value={phone}
+                  onKeyDown={handleInputKeyDown}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full p-2.5 sm:p-3 bg-gray-50 dark:bg-navy-950 border border-gray-200 dark:border-navy-700 rounded-xl text-xs font-mono font-black outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition text-left"
                 />
@@ -290,6 +309,7 @@ export default function CustomerQuickAddModal({
                     type="text"
                     placeholder="مثال: مركز الأمل للاتصالات"
                     value={shopName}
+                    onKeyDown={handleInputKeyDown}
                     onChange={(e) => setShopName(e.target.value)}
                     className="w-full p-2.5 sm:p-3 bg-gray-50 dark:bg-navy-950 border border-gray-200 dark:border-navy-700 rounded-xl text-xs font-bold outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition"
                   />
@@ -304,6 +324,7 @@ export default function CustomerQuickAddModal({
                     type="text"
                     placeholder="مثال: صنعاء - شارع تعز"
                     value={address}
+                    onKeyDown={handleInputKeyDown}
                     onChange={(e) => setAddress(e.target.value)}
                     className="w-full p-2.5 sm:p-3 bg-gray-50 dark:bg-navy-950 border border-gray-200 dark:border-navy-700 rounded-xl text-xs font-bold outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition"
                   />

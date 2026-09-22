@@ -1,0 +1,240 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Master SuperAdmin helper function (مالك النظام والمدير العام)
+    function isSuperAdmin() {
+      return (request.auth != null && (
+        (request.auth.token.email != null && (
+          request.auth.token.email.lower() == 'a777503191@gmail.com' ||
+          request.auth.token.email.lower() == 'joad7723@gmail.com' ||
+          request.auth.token.email.lower() == 'system@jam-pro.net'
+        )) ||
+        request.auth.uid == 'master-a777503191' ||
+        request.auth.uid == 'master-joad7723'
+      ));
+    }
+
+    // Authenticated User helper function
+    function isAuthenticated() {
+      return request.auth != null || isSuperAdmin();
+    }
+
+    // عزل البيانات: فحص ما إذا كان المستخدم مسجلاً أو ينتمي للمحل المعني
+    // تم تحسين الدالة لفحص الرموز المميزة المخصصة (Custom Claims) أولاً لحفظ حصص Spark المجانية وتفادي استدعاء get() و exists()
+    function belongsToShop(shopId) {
+      return isSuperAdmin() || (
+        isAuthenticated() && (
+          request.auth.token.shopId == shopId ||
+          request.auth.uid == shopId ||
+          (request.auth.token.keys().hasAll(['shopId']) && request.auth.token.shopId == shopId) ||
+          exists(/databases/$(database)/documents/shops/$(shopId)/users/$(request.auth.uid)) ||
+          (exists(/databases/$(database)/documents/user_index/$(request.auth.uid)) &&
+           get(/databases/$(database)/documents/user_index/$(request.auth.uid)).data.shopId == shopId)
+        )
+      );
+    }
+
+    // فحص صلاحيات مدير المحل (مع التحقق المباشر من الرمز المميز token.role لحفظ قراءات Firestore)
+    function isShopAdmin(shopId) {
+      return isSuperAdmin() || (
+        isAuthenticated() && (
+          request.auth.uid == shopId ||
+          (request.auth.token.keys().hasAll(['shopId', 'role']) && request.auth.token.shopId == shopId && request.auth.token.role == 'admin') ||
+          (request.auth.token.role == 'admin' && request.auth.token.shopId == shopId) ||
+          (exists(/databases/$(database)/documents/shops/$(shopId)) && 
+           get(/databases/$(database)/documents/shops/$(shopId)).data.ownerUid == request.auth.uid) ||
+          (exists(/databases/$(database)/documents/shops/$(shopId)/users/$(request.auth.uid)) &&
+           get(/databases/$(database)/documents/shops/$(shopId)/users/$(request.auth.uid)).data.role == 'admin') ||
+          (exists(/databases/$(database)/documents/user_index/$(request.auth.uid)) &&
+           get(/databases/$(database)/documents/user_index/$(request.auth.uid)).data.shopId == shopId &&
+           get(/databases/$(database)/documents/user_index/$(request.auth.uid)).data.role == 'admin')
+        )
+      );
+    }
+
+    // 1. مسار الفهرس السريع للمستخدمين (user_index/{userId})
+    match /user_index/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+    }
+
+    // 2. تحديثات وتنبيهات الطوارئ
+    match /emergency_hotfixes/{hotfixId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // 3. فئات المحلات والتجار (مستورد، جملة الجملة، جملة، تجزئة، مواطنين)
+    match /shops/{shopId} {
+      // السماح بالقراءة فقط لمنتسبي المحل أو المدير العام
+      allow read: if belongsToShop(shopId) || isSuperAdmin();
+      // السماح بإنشاء المحل لأي مستخدم موثق، والتعديل والحذف لمدير المحل أو المشرف العام
+      allow create: if isAuthenticated();
+      allow update: if isShopAdmin(shopId) || isSuperAdmin();
+      allow delete: if isShopAdmin(shopId) || isSuperAdmin();
+
+      // المستخدمون والمحاسبون والموظفون التابعون للمحل
+      match /users/{userId} {
+        allow read: if belongsToShop(shopId) || isSuperAdmin();
+        allow create, update: if isShopAdmin(shopId) || (isAuthenticated() && request.auth.uid == userId) || isSuperAdmin();
+        allow delete: if isShopAdmin(shopId) || isSuperAdmin();
+      }
+
+      // الحركات، السندات، القيود، الفواتير التابعة للمحل
+      match /transactions/{txId} {
+        allow read: if belongsToShop(shopId) || isSuperAdmin();
+        allow create, update: if belongsToShop(shopId) || isSuperAdmin();
+        allow delete: if isShopAdmin(shopId) || isSuperAdmin();
+      }
+
+      // المخزون والمنتجات التابعة للمحل
+      match /inventory/{itemId} {
+        allow read, write: if belongsToShop(shopId) || isSuperAdmin();
+      }
+
+      // الحسابات والخزائن التابعة للمحل
+      match /accounts/{accountId} {
+        allow read, write: if belongsToShop(shopId) || isSuperAdmin();
+      }
+
+      // أي مجموعات فرعية إضافية داخل المحل
+      match /{subcollection}/{docId} {
+        allow read, write: if belongsToShop(shopId) || isSuperAdmin();
+      }
+    }
+
+    // 4. مطابقة المتاجر B2B وسجلات المتجر
+    match /stores/{storeId} {
+      allow read, write: if belongsToShop(storeId) || isSuperAdmin();
+    }
+
+    match /store_db_registry/{storeId} {
+      allow read, write: if belongsToShop(storeId) || isSuperAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    match /b2bStoreProfiles/{profileId} {
+      allow read: if isAuthenticated();
+      allow write: if belongsToShop(profileId) || isSuperAdmin();
+    }
+
+    // 5. ملفات المستخدمين الفردية العامة
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+    }
+
+    // 6. سوق الجملة العام المتاح لكافة التجار المعتمدين
+    match /public_market_feed/{feedId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // 7. طلبات B2B بين التجار والمستوردين
+    match /relayed_b2b_orders/{orderId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // 8. كتالوج باقات وأسعار الاتصالات وسداد الفواتير
+    match /telecom_packages_catalog/{packageId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // 9. ارتباطات B2B المتبادلة بين المتاجر ومجموعة الارتباطات
+    match /shops/{shopId}/connections/{targetShopId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /b2bConnections/{connId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // 9.2 كتالوج ومنتجات سوق الجملة B2B
+    match /wholesaleProducts/{productId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // 9.3 مفاتيح الارتباط الموحدة B2B
+    match /unifiedB2bKeys/{keyId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /b2bConnectionKeys/{keyId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // 9.4 وكالات وعمولات ومرتجعات B2B
+    match /b2bAgencies/{agencyId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    match /b2b_mediation_commissions/{commId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /b2b_returns/{returnId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /b2b_return_commission_reversals/{revId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /orders/{orderId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /suppliers/{supplierId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // 9.1 طلبات الارتباط التجاري المباشرة بين التجار والموردين
+    match /b2b_connection_requests/{requestId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // 10. حسابات الزبائن والعملاء وقيد التفعيل
+    match /clients/{clientId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /customers/{customerId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /pending_activations/{actId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /sales/{saleId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /debts/{debtId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /systemLogs/{logId} {
+      allow read: if isSuperAdmin();
+      allow write: if isAuthenticated();
+    }
+
+    match /system/{sysDoc} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // 11. الصلاحيات الكاملة والمطلقة للحساب الأدمن المشرف العام a777503191@gmail.com على كافة المجموعات والمستندات
+    match /{document=**} {
+      allow read, write: if isSuperAdmin();
+    }
+  }
+}
+

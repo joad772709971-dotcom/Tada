@@ -1,0 +1,36 @@
+{
+  "name": "JAM System Pro - منظومة التاجر والمبيعات",
+  "short_name": "JAM Store Pro",
+  "description": "المنظومة السحابية المتكاملة لإدارة المبيعات، المحاسبة ونقاط البيع السريعة.",
+  "icons": [
+    {
+      "src": "/assets/icons/merchant-app-icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icons/merchant-app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icons/merchant-app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icons/merchant-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0F1D",
+  "theme_color": "#00F0FF",
+  "orientation": "any"
+}

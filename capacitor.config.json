@@ -1,0 +1,19 @@
+{
+  "appId": "com.jam.store",
+  "appName": "Jam store",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "Camera": {
+      "presentationOptions": ["alert"]
+    }
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "backgroundColor": "#05070e"
+  }
+}

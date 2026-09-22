@@ -1,0 +1,323 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Store personnel and admin profiles",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["superadmin", "manager", "employee", "engineer"] },
+        "ownerId": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "businessType": { "type": "string" },
+        "registered_pcs": { "type": "array", "items": { "type": "string" } },
+        "registered_mobiles": { "type": "array", "items": { "type": "string" } },
+        "max_allowed_pcs": { "type": "number" },
+        "max_allowed_mobiles": { "type": "number" },
+        "hwid_bypass": { "type": "boolean" }
+      },
+      "required": ["uid", "email", "role", "ownerId"]
+    },
+    "InventoryItem": {
+      "title": "Inventory Item",
+      "description": "Products in store stock",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "agencyName": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "stock": { "type": "number" },
+        "price": { "type": "number" },
+        "cost": { "type": "number" },
+        "lastBuyPrice": { "type": "number" },
+        "price_imported": { "type": "number" },
+        "price_wholesale_wholesale": { "type": "number" },
+        "price_wholesale": { "type": "number" },
+        "price_retail": { "type": "number" },
+        "ownerId": { "type": "string" },
+        "category": { "type": "string" },
+        "barcode": { "type": "string" }
+      },
+      "required": ["name", "stock", "price", "ownerId"]
+    },
+    "ShopSettings": {
+      "title": "Shop Settings",
+      "description": "Configuration for the individual shop",
+      "type": "object",
+      "properties": {
+        "shopName": { "type": "string" },
+        "storeCode": { "type": "string" },
+        "autoPricingEnabled": { "type": "boolean" },
+        "autoPricingProfitMargin": { "type": "number" },
+        "autoPricingDirection": { "type": "string", "enum": ["cost_to_sale", "sale_to_cost", "none"] }
+      }
+    },
+    "Ad": {
+      "title": "Advertisement",
+      "description": "Centralized ads for the system",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "link": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["all", "retail_customers", "retailers", "wholesalers", "specific"] },
+        "targetUids": { "type": "array", "items": { "type": "string" } },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "paused", "scheduled"] },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "views": { "type": "number" },
+            "clicks": { "type": "number" },
+            "orders": { "type": "number" }
+          }
+        }
+      },
+      "required": ["title", "imageUrl", "targetType", "status"]
+    },
+    "GeminiKey": {
+      "title": "Gemini API Key",
+      "description": "Database-driven API key for Gemini rotation",
+      "type": "object",
+      "properties": {
+        "key_value": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "error_count": { "type": "number" },
+        "last_used": { "type": "string", "format": "date-time" },
+        "label": { "type": "string" }
+      },
+      "required": ["key_value", "status", "error_count"]
+    },
+    "AccountStatement": {
+      "title": "Account Statement",
+      "description": "Archived statement reports documenting purchases, returns, and payments for audit trail logging",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "entityId": { "type": "string" },
+        "entityName": { "type": "string" },
+        "entityPhone": { "type": "string" },
+        "filterType": { "type": "string", "enum": ["totals", "purchases", "returns", "payments"] },
+        "dateFrom": { "type": "string" },
+        "dateTo": { "type": "string" },
+        "totalPurchases": { "type": "number" },
+        "totalReturns": { "type": "number" },
+        "totalPayments": { "type": "number" },
+        "finalDebt": { "type": "number" },
+        "recordsCount": { "type": "number" },
+        "createdAt": { "type": "object" },
+        "sysLogged": { "type": "boolean" }
+      },
+      "required": ["ownerId", "entityId", "entityName"]
+    },
+    "RewardTicket": {
+      "title": "Reward Ticket",
+      "description": "Cryptographic anti-cheat verification for level 100",
+      "type": "object",
+      "properties": {
+        "ticket_id": { "type": "string" },
+        "uid": { "type": "string" },
+        "level": { "type": "number" },
+        "hash": { "type": "string" },
+        "verifiedCode": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ticket_id", "uid", "level", "hash"]
+    },
+    "HeldInvoice": {
+      "title": "Held Invoice",
+      "description": "Invoice placed on hold for retrieval and settlement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "shopId": { "type": "string" },
+        "description": { "type": "string" },
+        "items": { "type": "array", "items": { "type": "object" } },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "discount": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "isReturn": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "ownerId", "items"]
+    },
+    "CartDraft": {
+      "title": "Cart Draft",
+      "description": "B2B client cart draft for wholesaler products",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "name": { "type": "string" },
+        "cart": { "type": "array", "items": { "type": "object" } },
+        "wholesalerId": { "type": "string" },
+        "wholesalerName": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "ownerId", "cart"]
+    },
+    "GlobalHotfix": {
+      "title": "Global Hotfix",
+      "description": "Dynamic auto-healing software micro-patches to resolve issues",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "errorCode": { "type": "string" },
+        "bugTriggerName": { "type": "string" },
+        "hotfixCode": { "type": "string" },
+        "descriptionAr": { "type": "string" },
+        "deployedAt": { "type": "string" },
+        "version": { "type": "number" }
+      },
+      "required": ["id", "bugTriggerName", "hotfixCode"]
+    },
+    "B2BConnectionRequest": {
+      "title": "B2B Connection Request",
+      "description": "Commercial linkage requests between retailers and wholesalers/importers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderShopName": { "type": "string" },
+        "senderPhone": { "type": "string" },
+        "senderBusinessType": { "type": "string" },
+        "senderRole": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "receiverShopName": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "assignedPriceTier": { "type": "string", "enum": ["imported", "wholesale_wholesale", "wholesale", "retail"] },
+        "creditLimit": { "type": "number" },
+        "paymentTerms": { "type": "string" },
+        "connectionMethod": { "type": "string", "enum": ["in_app_request", "qr_code", "invitation_key"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "senderId", "receiverId", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Global user management"
+    },
+    "/settings/{ownerId}": {
+      "schema": "ShopSettings",
+      "description": "Per-owner shop configurations"
+    },
+    "/inventory/{itemId}": {
+      "schema": "InventoryItem",
+      "description": "Store specific inventory"
+    },
+    "/sales/{saleId}": {
+      "schema": "object",
+      "description": "Sales records containing items, total, and profit"
+    },
+    "/maintenanceOrders/{orderId}": {
+      "schema": "object",
+      "description": "Maintenance and repair orders with status tracking"
+    },
+    "/transactions/{transId}": {
+      "schema": "object",
+      "description": "Financial transactions (income/expense)"
+    },
+    "/balanceTransactions/{transId}": {
+      "schema": "object",
+      "description": "Mobile balance specific transactions"
+    },
+    "/networkOrders/{orderId}": {
+      "schema": "object",
+      "description": "B2B orders between branches or with distributors"
+    },
+    "/accounts/{accId}": {
+      "schema": "object",
+      "description": "Monetary accounts (Cash, Bank, etc.)"
+    },
+    "/customers/{custId}": {
+      "schema": "object",
+      "description": "Customer profiles and debt tracking"
+    },
+    "/customers/{custId}/statements/{stmtId}": {
+      "schema": "AccountStatement",
+      "description": "Archived statements for credit customers"
+    },
+    "/suppliers/{suppId}": {
+      "schema": "object",
+      "description": "Supplier profiles and account balances"
+    },
+    "/suppliers/{suppId}/statements/{stmtId}": {
+      "schema": "AccountStatement",
+      "description": "Archived statements for inventory suppliers"
+    },
+    "/activityLogs/{logId}": {
+      "schema": "object",
+      "description": "Audit logs for system actions"
+    },
+    "/system/config": {
+      "schema": "object",
+      "description": "Global system configuration (maintenance mode, etc.)"
+    },
+    "/system/security": {
+      "schema": "object",
+      "description": "Global security settings"
+    },
+    "/ads/{adId}": {
+      "schema": "Ad",
+      "description": "Centralized advertisements"
+    },
+    "/gemini_keys/{keyId}": {
+      "schema": "GeminiKey",
+      "description": "Dynamic Gemini API keys for rotation and monitoring"
+    },
+    "/pending_activations/{docId}": {
+      "schema": "object",
+      "description": "SMS and VIP Royal Activation codes"
+    },
+    "/reward_tickets/{ticketId}": {
+      "schema": "RewardTicket",
+      "description": "Secure verification rewards generated by server only"
+    },
+    "/promo_videos/{videoId}": {
+      "schema": "object",
+      "description": "Promo videos and reels added by merchants for customer viewing"
+    },
+    "/reels/{reelId}": {
+      "schema": "object",
+      "description": "Alternative collection for merchant reels"
+    },
+    "/calls/{callId}": {
+      "schema": "object",
+      "description": "WebRTC calls and signaling metadata"
+    },
+    "/calls/{callId}/callerCandidates/{candidateId}": {
+      "schema": "object",
+      "description": "WebRTC ICE candidates sent by the caller"
+    },
+    "/calls/{callId}/receiverCandidates/{candidateId}": {
+      "schema": "object",
+      "description": "WebRTC ICE candidates sent by the receiver"
+    },
+    "/held_invoices/{invoiceId}": {
+      "schema": "HeldInvoice",
+      "description": "Invoices placed on hold by cashier"
+    },
+    "/cart_drafts/{draftId}": {
+      "schema": "CartDraft",
+      "description": "B2B client cart drafts saved for later recovery"
+    },
+    "/global_hotfixes/{hotfixId}": {
+      "schema": "GlobalHotfix",
+      "description": "Auto-healing global hotfixes deployed by administrators"
+    },
+    "/b2b_connection_requests/{requestId}": {
+      "schema": "B2BConnectionRequest",
+      "description": "Commercial linkage requests between retailers and suppliers/wholesalers"
+    }
+  }
+}

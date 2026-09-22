@@ -1,0 +1,10 @@
+node_modules/
+android/.gradle/
+android/build/
+android/app/build/
+tmp/
+temp/
+.env
+.env*
+*.apk
+*.log

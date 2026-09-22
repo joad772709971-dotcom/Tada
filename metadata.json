@@ -1,0 +1,8 @@
+{
+  "name": "JAM SYSTEM PRO - نظام المبيعات والإدارة المتكامل",
+  "description": "منظومة JAM SYSTEM PRO الشاملة لإدارة المحلات، المبيعات، الحسابات، والمخازن مع تطبيق بوابة العملاء والخدمات.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.jamsystempro.desktop",
+  "productName": "jam system pro",
+  "copyright": "Copyright © 2026 JAM System Pro",
+  "compression": "maximum",
+  "asar": true,
+  "directories": {
+    "output": "release",
+    "buildResources": "public"
+  },
+  "files": [
+    "dist/**/*",
+    "electron.js",
+    "preload.cjs",
+    "package.json"
+  ],
+  "extraMetadata": {
+    "main": "electron.js"
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "icon": "public/icon.png",
+    "forceCodeSigning": false,
+    "verifyUpdateCodeSignature": false
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "perMachine": false,
+    "differentialPackage": true,
+    "shortcutName": "Jam store",
+    "artifactName": "Jam-Store-Setup.exe",
+    "uninstallDisplayName": "Jam store Uninstaller",
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true
+  }
+}

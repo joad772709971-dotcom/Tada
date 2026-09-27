@@ -200,9 +200,53 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "senderId", "receiverId", "status"]
+    },
+    "StoreLinkContract": {
+      "title": "Store Link Contract",
+      "description": "Network linkage contract between stores and customers/merchants",
+      "type": "object",
+      "properties": {
+        "linkId": { "type": "string" },
+        "sourceStore": { "type": "string" },
+        "targetEntity": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "EXPIRED", "SUSPENDED"] },
+        "validUntil": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "permissions": {
+          "type": "object",
+          "properties": {
+            "allowDebt": { "type": "boolean" },
+            "creditLimit": { "type": "number" },
+            "allowedPaymentMethods": { "type": "array", "items": { "type": "string" } },
+            "viewCatalog": { "type": "boolean" }
+          }
+        }
+      },
+      "required": ["linkId", "sourceStore", "targetEntity", "status", "validUntil"]
     }
   },
   "firestore": {
+    "/store_links/{linkId}": {
+      "schema": "StoreLinkContract",
+      "description": "Contracts and network linkage permissions between stores"
+    },
+    "/stores/{storeId}/customers/{customerId}": {
+      "schema": "object",
+      "description": "Multi-tenant isolated customer database for specific store"
+    },
+    "/stores/{storeId}/invoices/{invoiceId}": {
+      "schema": "object",
+      "description": "Store specific cashier and sale invoices"
+    },
+    "/stores/{storeId}/inventory/{productId}": {
+      "schema": "InventoryItem",
+      "description": "Store specific inventory items"
+    },
+    "/stores/{storeId}/employees/{employeeId}": {
+      "schema": "UserProfile",
+      "description": "Store employees and authorization profiles"
+    },
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "Global user management"

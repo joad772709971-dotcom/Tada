@@ -233,8 +233,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          TAG_NAME="v3.0.2"
-          RELEASE_TITLE="Jam store & Store pro - v3.0.2"
+          TAG_NAME="v4.0.1"
+          RELEASE_TITLE="Jam store & Store pro - v4.0.1"
           APK_FILE="release-output/${{ matrix.variant.apk_filename }}"
           
           echo "Publishing $APK_FILE to release $TAG_NAME..."
@@ -242,7 +242,7 @@ jobs:
           # Create release if not exists, or upload asset with clobber
           gh release create "$TAG_NAME" "$APK_FILE" \
             --title "$RELEASE_TITLE" \
-            --notes "### 🚀 روابط تحميل التطبيقات الرسمية المباشرة (الإصدار v3.0.2 - Build #${{ github.run_number }})"$'\n\n'"- 📱 تطبيق التجار والمتاجر: \`Jam-Store.apk\`"$'\n'"- 📱 تطبيق الزبائن والمواطنين: \`Store-Pro.apk\`"$'\n'"- 💻 برنامج سطح المكتب للويندوز: \`Jam-Store-Setup.exe\`" \
+            --notes "### 🚀 روابط تحميل التطبيقات الرسمية المباشرة (الإصدار v4.0.1 - Build #${{ github.run_number }})"$'\n\n'"- 📱 تطبيق التجار والمتاجر: \`Jam-Store.apk\`"$'\n'"- 📱 تطبيق الزبائن والمواطنين: \`Store-Pro.apk\`"$'\n'"- 💻 برنامج سطح المكتب للويندوز: \`Jam-Store-Setup.exe\`" \
             --latest || gh release upload "$TAG_NAME" "$APK_FILE" --clobber
           
           # Also upload to latest-release tag for fixed permanent download link
@@ -356,7 +356,7 @@ jobs:
           const fs = require('fs');
           const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
           pkg.name = 'jam-store';
-          pkg.version = '3.0.2';
+          pkg.version = '4.0.1';
           pkg.author = 'Jam store';
           pkg.description = 'Jam store Desktop Standalone POS & ERP System';
           pkg.main = 'electron-main.cjs';
@@ -425,8 +425,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          TAG_NAME="v3.0.2"
-          RELEASE_TITLE="Jam store & Store pro - v3.0.2"
+          TAG_NAME="v4.0.1"
+          RELEASE_TITLE="Jam store & Store pro - v4.0.1"
           
           # Find generated installer
           EXE_FILE=$(find dist-desktop -name "*.exe" | head -n 1)
@@ -435,7 +435,7 @@ jobs:
           if [ -n "$EXE_FILE" ]; then
             gh release create "$TAG_NAME" "$EXE_FILE" \
               --title "$RELEASE_TITLE" \
-              --notes "### 🚀 روابط تحميل التطبيقات الرسمية المباشرة (الإصدار v3.0.2 - Build #${{ github.run_number }})"$'\n\n'"- 📱 تطبيق التجار والمتاجر: \`Jam-Store.apk\`"$'\n'"- 📱 تطبيق الزبائن والمواطنين: \`Store-Pro.apk\`"$'\n'"- 💻 برنامج سطح المكتب للويندوز: \`Jam-Store-Setup.exe\`" \
+              --notes "### 🚀 روابط تحميل التطبيقات الرسمية المباشرة (الإصدار v4.0.1 - Build #${{ github.run_number }})"$'\n\n'"- 📱 تطبيق التجار والمتاجر: \`Jam-Store.apk\`"$'\n'"- 📱 تطبيق الزبائن والمواطنين: \`Store-Pro.apk\`"$'\n'"- 💻 برنامج سطح المكتب للويندوز: \`Jam-Store-Setup.exe\`" \
               --latest || gh release upload "$TAG_NAME" "$EXE_FILE" --clobber
             
             gh release create "latest" "$EXE_FILE" \

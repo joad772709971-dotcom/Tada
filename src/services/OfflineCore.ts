@@ -477,14 +477,14 @@ export async function checkPhoneUniqueness(phone: string, options: PhoneCheckOpt
     }
   }
 
-  // 2. Check in 'clients' collection (VIP clients) only if not specifically bypassed
+  // 2. Check in unified 'users' collection (VIP clients / customers)
   if (!options.allowExistingClients) {
     try {
-      const qClients = query(collection(db, 'clients'), where('phone', '==', cleanPhone));
-      const snapClients = await getDocs(qClients);
-      if (!snapClients.empty) {
-        // If it's a VIP client, inform them unless they are registering as a store
-        if (options.checkRole === 'client') {
+      const userRef = doc(db, 'users', cleanPhone);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const u = userSnap.data();
+        if (options.checkRole === 'client' && (u.role === 'CUSTOMER' || u.role === 'customer')) {
           throw new Error('عذراً، رقم الهاتف هذا مسجل بالفعل كزبون VIP في النظام.');
         }
       }

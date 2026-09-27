@@ -131,6 +131,9 @@ export default function CustomerQuickAddModal({
 
       const customerPayload: Partial<Customer> = {
         ownerId,
+        shopId: profile?.shopId || ownerId,
+        createdBy: profile?.uid || ownerId,
+        createdByName: profile?.name || 'المالك',
         name: name.trim(),
         shopName: shopName.trim() || undefined,
         phone: cleanPhone,
@@ -143,6 +146,7 @@ export default function CustomerQuickAddModal({
         isB2BClient: businessTier !== 'individual',
         portalPassword,
         debt: calculatedDebt,
+        status: 'active',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -150,13 +154,35 @@ export default function CustomerQuickAddModal({
       // 1. Instant Save in Unified Offline Store Engine (IndexedDB + LocalStorage)
       const savedLocalCustomer = await unifiedOfflineStoreEngine.saveCustomerLocal(customerPayload as Customer, true);
 
-      // 2. Background sync to Firestore if online
+      // 2. Direct online sync to Firestore store subcollection & root registry
       if (navigator.onLine) {
-        addDoc(collection(db, 'customers'), {
-          ...customerPayload,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        }).catch(err => console.warn('Online sync deferred to queue:', err));
+        Promise.allSettled([
+          setDoc(doc(db, 'stores', ownerId, 'customers', savedLocalCustomer.id), {
+            ...customerPayload,
+            id: savedLocalCustomer.id,
+            storeId: ownerId,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          }, { merge: true }),
+          setDoc(doc(db, 'customers', savedLocalCustomer.id), {
+            ...customerPayload,
+            id: savedLocalCustomer.id,
+            storeId: ownerId,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          }, { merge: true }),
+          setDoc(doc(db, 'users', cleanPhone), {
+            userId: cleanPhone,
+            uid: cleanPhone,
+            phone: cleanPhone,
+            name: name.trim(),
+            role: 'CUSTOMER',
+            status: 'ACTIVE',
+            associatedStores: [ownerId],
+            primaryStoreId: ownerId,
+            updatedAt: serverTimestamp()
+          }, { merge: true })
+        ]).catch(err => console.warn('Online sync deferred to queue:', err));
       }
 
       // 3. Sync with smart commerce lead engine in background

@@ -29,7 +29,8 @@ const config: CapacitorConfig = {
   },
   // Request Bluetooth Connect, Bluetooth Scan, Wake Lock & Media Permissions
   server: {
-    androidScheme: "https"
+    androidScheme: "https",
+    cleartext: true
   }
 };
 

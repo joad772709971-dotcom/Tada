@@ -113,22 +113,21 @@ export default function Customers({ profile }: CustomersProps) {
   const [loadingVip, setLoadingVip] = useState(false);
 
   useEffect(() => {
-    if (customerTab === 'vip' && profile?.ownerId) {
+    const activeStoreId = profile?.ownerId || profile?.uid || (profile as any)?.shopId;
+    if (customerTab === 'vip' && activeStoreId) {
       setLoadingVip(true);
-      const q = query(
-        collection(db, 'clients'),
-        where('storeId', '==', profile.ownerId)
-      );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      // استخدام مجموعة المتجر المعزولة: stores/{storeId}/customers
+      const storeCustCol = collection(db, 'stores', activeStoreId, 'customers');
+      const unsubscribe = onSnapshot(storeCustCol, (snapshot) => {
         const list = snapshot.docs.map(doc => {
           const data = doc.data();
           return {
             id: doc.id,
-            uid: data.uid || '',
-            storeId: data.storeId || '',
+            uid: data.uid || doc.id,
+            storeId: activeStoreId,
             phone: data.phone || '',
             name: data.name || '',
-            password: data.password || '',
+            password: data.password || data.portalPassword || '',
             points: Number(data.points ?? 0),
             totalSpent: Number(data.totalSpent ?? 0),
             repairCount: Number(data.repairCount ?? 0),
@@ -139,12 +138,12 @@ export default function Customers({ profile }: CustomersProps) {
         setVipClients(list);
         setLoadingVip(false);
       }, (error) => {
-        console.error('Error listening to vip clients:', error);
+        console.error('Error listening to store customers:', error);
         setLoadingVip(false);
       });
       return () => unsubscribe();
     }
-  }, [customerTab, profile?.ownerId]);
+  }, [customerTab, profile?.ownerId, profile?.uid]);
 
   const getCustomerTier = (c: any) => {
     if (c.tier) return c.tier;
@@ -291,31 +290,111 @@ export default function Customers({ profile }: CustomersProps) {
   const [b2bInviteCustomer, setB2bInviteCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
-    if (!profile?.ownerId) return;
+    const effectiveOwnerId = profile?.ownerId || profile?.uid || (profile as any)?.shopId || '';
+    if (!effectiveOwnerId) return;
 
     // ⚡ Instant Cache Hydration (0ms load time)
-    const cacheKey = `customers_${profile.ownerId}`;
+    const cacheKey = `customers_${effectiveOwnerId}`;
     const cached = InstantCacheService.get<Customer[]>(cacheKey);
     if (cached && cached.length > 0) {
       setCustomers(cached);
     }
 
-    const q = query(
-      collection(db, 'customers'), 
-      where('ownerId', '==', profile.ownerId)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as Customer))
-        .filter(c => (c as any).status !== 'deleted' && (c as any).isDeleted !== true)
-        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
-      InstantCacheService.set(cacheKey, list);
-      setCustomers(list);
+    // Hydrate immediately from local IndexedDB
+    unifiedOfflineStoreEngine.getAllCustomersLocal(effectiveOwnerId).then(localList => {
+      if (localList && localList.length > 0) {
+        setCustomers(prev => {
+          const map = new Map<string, Customer>();
+          prev.forEach(c => { if (c.id) map.set(c.id, c); });
+          localList.forEach(c => { if (c.id) map.set(c.id, c); });
+          return Array.from(map.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
+        });
+      }
+    }).catch(() => {});
+
+    // Listen to real-time Firestore updates with multi-tenant shop isolation
+    const ownerIds = Array.from(new Set([profile?.ownerId, profile?.uid, (profile as any)?.shopId].filter(Boolean)));
+    const qCustomers = ownerIds.length > 1
+      ? query(collection(db, 'customers'), where('ownerId', 'in', ownerIds.slice(0, 10)))
+      : query(collection(db, 'customers'), where('ownerId', '==', effectiveOwnerId));
+
+    // Also listen to store-isolated subcollection: stores/{storeId}/customers
+    const qStoreSubCustomers = collection(db, 'stores', effectiveOwnerId, 'customers');
+
+    let remoteCustomers: Customer[] = [];
+    let remoteStoreSubCustomers: Customer[] = [];
+
+    const getCleanPhone = (p?: string) => (p || '').replace(/[\s\-\(\)\+]/g, '').trim();
+
+    const combineAndSet = async () => {
+      const localList = await unifiedOfflineStoreEngine.getAllCustomersLocal(effectiveOwnerId).catch(() => []);
+      const mergedMap = new Map<string, Customer>();
+
+      // 1. Add local customers
+      localList.forEach(c => {
+        const phoneKey = getCleanPhone(c.phone);
+        const mapKey = phoneKey ? `p_${phoneKey}` : (c.id || `id_${Math.random()}`);
+        mergedMap.set(mapKey, c);
+      });
+
+      // 2. Add store subcollection customers
+      remoteStoreSubCustomers.forEach(c => {
+        const phoneKey = getCleanPhone(c.phone);
+        const mapKey = phoneKey ? `p_${phoneKey}` : (c.id || `id_${Math.random()}`);
+        if (mergedMap.has(mapKey)) {
+          const existing = mergedMap.get(mapKey)!;
+          mergedMap.set(mapKey, { ...existing, ...c, id: existing.id || c.id });
+        } else {
+          mergedMap.set(mapKey, c);
+        }
+      });
+
+      // 3. Add remote root customers
+      remoteCustomers.forEach(c => {
+        const phoneKey = getCleanPhone(c.phone);
+        const mapKey = phoneKey ? `p_${phoneKey}` : (c.id || `id_${Math.random()}`);
+        if (mergedMap.has(mapKey)) {
+          const existing = mergedMap.get(mapKey)!;
+          mergedMap.set(mapKey, { ...existing, ...c });
+        } else {
+          mergedMap.set(mapKey, c);
+        }
+      });
+
+      const finalList = Array.from(mergedMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
+      InstantCacheService.set(cacheKey, finalList);
+      setCustomers(finalList);
+    };
+
+    const unsubCustomers = onSnapshot(qCustomers, (snapshot) => {
+      remoteCustomers = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as Customer))
+        .filter(c => (c as any).status !== 'deleted' && (c as any).isDeleted !== true);
+      combineAndSet();
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'customers');
     });
-    return () => unsubscribe();
-  }, [profile?.ownerId]);
+
+    const unsubStoreSub = onSnapshot(qStoreSubCustomers, (snapshot) => {
+      remoteStoreSubCustomers = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as Customer))
+        .filter(c => (c as any).status !== 'deleted' && (c as any).isDeleted !== true);
+      combineAndSet();
+    }, (err) => {
+      console.warn('Real-time store subcollection customers sync notice:', err.message);
+    });
+
+    const handleSyncEvent = () => {
+      combineAndSet();
+    };
+    window.addEventListener('jam:customers_synced', handleSyncEvent);
+
+    return () => {
+      unsubCustomers();
+      unsubStoreSub();
+      window.removeEventListener('jam:customers_synced', handleSyncEvent);
+    };
+  }, [profile?.ownerId, profile?.uid]);
 
   useEffect(() => {
     const fetchShopSettings = async () => {
@@ -371,7 +450,7 @@ export default function Customers({ profile }: CustomersProps) {
       const randomPassword = Math.floor(100000 + Math.random() * 900000).toString();
 
       // 2. ترحيل وتوثيق الحساب سحابياً عبر الخدمة الموحدة (smartCommerceService)
-      await smartCommerceService.getOrCreateLead(formDataVal.phone, shopOwnerId, formDataVal.name, randomPassword);
+      await smartCommerceService.getOrCreateLead(formDataVal.phone, shopOwnerId, formDataVal.name, randomPassword).catch(() => {});
 
       // 3. صياغة كارت الترحيب ومشاركته آلياً عبر رابط المتجر الموحد للزبائن
       const shopName = profile?.shopName || 'متجر JAM Pro';
@@ -379,8 +458,14 @@ export default function Customers({ profile }: CustomersProps) {
       
       const whatsappMessage = `مرحباً بك يا ${formDataVal.name} في ${shopName}.\nتم تفعيل حسابك المباشر في بوابة الزبائن VIP لمتابعة فواتيرك وصيانة أجهزتك ونقاطك أولاً بأول:\n\nرقم الهاتف: ${formDataVal.phone}\nكلمة المرور الآمنة: ${randomPassword}\n\nرابط البوابة المباشر:\n${portalLink}`;
       
-      const encodedMessage = encodeURIComponent(whatsappMessage);
-      window.open(`https://wa.me/${formDataVal.phone}?text=${encodedMessage}`, '_blank');
+      try {
+        const encodedMessage = encodeURIComponent(whatsappMessage);
+        if (typeof window !== 'undefined' && window.open) {
+          window.open(`https://wa.me/${formDataVal.phone}?text=${encodedMessage}`, '_blank');
+        }
+      } catch (openErr) {
+        console.warn('Could not launch window.open for WhatsApp:', openErr);
+      }
       
     } catch (err) {
       console.error('Error in local creation logic:', err);
@@ -412,7 +497,8 @@ export default function Customers({ profile }: CustomersProps) {
           creditLimit: formData.allowCredit ? Number(formData.creditLimit) || 0 : 0,
           isB2BClient: isB2B,
           debt: Number(formData.debt) || 0,
-          ownerId: profile?.ownerId,
+          ownerId: effectiveOwnerId,
+          shopId: profile?.shopId || effectiveOwnerId,
           tier: autoTier,
           updatedAt: new Date().toISOString()
         };
@@ -430,6 +516,8 @@ export default function Customers({ profile }: CustomersProps) {
             creditLimit: formData.allowCredit ? Number(formData.creditLimit) || 0 : 0,
             isB2BClient: isB2B,
             debt: Number(formData.debt) || 0,
+            ownerId: effectiveOwnerId,
+            shopId: profile?.shopId || effectiveOwnerId,
             tier: autoTier,
             updatedAt: serverTimestamp()
           }).catch(e => console.warn('Deferred online customer update:', e));
@@ -447,7 +535,10 @@ export default function Customers({ profile }: CustomersProps) {
           creditLimit: formData.allowCredit ? Number(formData.creditLimit) || 0 : 0,
           isB2BClient: isB2B,
           debt: Number(formData.debt) || 0,
-          ownerId: profile?.ownerId,
+          ownerId: effectiveOwnerId,
+          shopId: profile?.shopId || effectiveOwnerId,
+          createdBy: profile?.uid || effectiveOwnerId,
+          createdByName: profile?.name || 'المالك',
           linkedUid: null,
           tier: autoTier,
           status: 'active',
@@ -455,17 +546,44 @@ export default function Customers({ profile }: CustomersProps) {
           updatedAt: new Date().toISOString()
         };
 
-        // Save immediately in local database
-        await unifiedOfflineStoreEngine.saveCustomerLocal(customerData as Customer, true);
+        // 1. Save immediately in local database
+        const savedCustomer = await unifiedOfflineStoreEngine.saveCustomerLocal(customerData as Customer, true);
 
+        // 2. Direct online sync to Firestore store subcollection & root customers registry
         if (navigator.onLine) {
           handleCreateCustomerSubmit({ name: formData.name, phone: formData.phone }).catch(() => {});
-          addDoc(collection(db, 'customers'), {
-            ...customerData,
-            createdAt: serverTimestamp()
-          }).catch(e => console.warn('Deferred online customer create:', e));
+          const targetId = savedCustomer.id;
+          const cleanPhone = formData.phone.trim().replace(/[\s\-\(\)\+]/g, '');
+
+          await Promise.allSettled([
+            setDoc(doc(db, 'stores', effectiveOwnerId, 'customers', targetId), {
+              ...customerData,
+              id: targetId,
+              storeId: effectiveOwnerId,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            }, { merge: true }),
+            setDoc(doc(db, 'customers', targetId), {
+              ...customerData,
+              id: targetId,
+              storeId: effectiveOwnerId,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            }, { merge: true }),
+            cleanPhone ? setDoc(doc(db, 'users', cleanPhone), {
+              userId: cleanPhone,
+              uid: cleanPhone,
+              phone: cleanPhone,
+              name: formData.name.trim(),
+              role: 'CUSTOMER',
+              status: 'ACTIVE',
+              associatedStores: [effectiveOwnerId],
+              primaryStoreId: effectiveOwnerId,
+              updatedAt: serverTimestamp()
+            }, { merge: true }) : Promise.resolve()
+          ]).catch(e => console.warn('Deferred online customer create:', e));
         }
-        setStatus({ type: 'success', message: 'تمت إضافة العميل الجديد وتثبيت السند بنجاح' });
+        setStatus({ type: 'success', message: 'تمت إضافة العميل الجديد وتثبيت حسابه محلياً وسحابياً بنجاح' });
       }
       closeModal();
     } catch (error) {

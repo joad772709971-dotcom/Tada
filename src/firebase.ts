@@ -205,14 +205,19 @@ export const handleUnifiedPhoneLoginInBackground = async (
   }
 
   try {
-    const qClients = query(collection(db, 'clients'), where('phone', '==', cleanPhone));
-    const snapClients = await getDocs(qClients);
-    if (!snapClients.empty) {
+    const userDocRef = doc(db, 'users', cleanPhone);
+    const userSnap = await getDoc(userDocRef);
+    if (userSnap.exists()) {
+      const uData = userSnap.data();
       isVipClient = true;
-      console.log(`👑 Found customer registered in VIP clients collection: ${cleanPhone}`);
+      if (uData.password === userProvidedPin || uData.currentPassword === userProvidedPin) {
+        directMatchSuccess = true;
+        if (uData.name) matchedCustomerName = uData.name;
+        if (uData.userId || uData.uid) matchedCustomerUid = uData.userId || uData.uid;
+      }
     }
   } catch (e) {
-    console.warn('Error checking clients collection:', e);
+    console.warn('Error checking unified users identity in firebase.ts:', e);
   }
 
   // Use a standardized secure hardware/store-bound salt as the background password (or a fixed pin preset by the owner)
@@ -237,20 +242,7 @@ export const handleUnifiedPhoneLoginInBackground = async (
       });
     }
 
-    if (!directMatchSuccess) {
-      const qCl = query(collection(db, 'clients'), where('phone', '==', cleanPhone));
-      const snapCl = await getDocs(qCl);
-      if (!snapCl.empty) {
-        snapCl.forEach(doc => {
-          const d = doc.data();
-          if (d.password === userProvidedPin) {
-            directMatchSuccess = true;
-            if (d.name) matchedCustomerName = d.name;
-            if (d.uid) matchedCustomerUid = d.uid;
-          }
-        });
-      }
-    }
+
 
     if (!directMatchSuccess) {
       const qCust = query(collection(db, 'customers'), where('phone', '==', cleanPhone));

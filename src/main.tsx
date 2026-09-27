@@ -60,6 +60,19 @@ if (typeof window !== 'undefined') {
     }
   }, true);
 
+  window.onerror = function (message, source, lineno, colno, error) {
+    const errorStr = String(message || error?.message || '').toLowerCase();
+    if (
+      errorStr.includes('script error') ||
+      errorStr.includes('internal assertion failed') ||
+      errorStr.includes('unexpected state') ||
+      errorStr.includes('permission-denied') ||
+      errorStr.includes('missing or insufficient permissions')
+    ) {
+      return true;
+    }
+  };
+
   const originalWarn = console.warn;
   const originalError = console.error;
 
@@ -130,6 +143,10 @@ if (typeof window !== 'undefined') {
 }
 
 const getProductionBackendDomain = (): string => {
+  // In standard web browser environments, use relative URLs ('') so Express & Vite handle it directly
+  if (typeof window !== 'undefined' && !window.location.origin.includes('capacitor://') && !window.location.protocol.startsWith('file')) {
+    return '';
+  }
   // 1. Try environment variables
   let env_url = (import.meta as any).env?.VITE_APP_URL || '';
   if (env_url && !env_url.includes('localhost')) {

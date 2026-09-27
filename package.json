@@ -3,11 +3,11 @@
   "description": "JAM System Pro Desktop Application",
   "author": "JAM System Pro",
   "private": true,
-  "version": "3.0.1",
+  "version": "4.0.1",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "node scripts/patch-firestore.cjs && vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "node scripts/patch-firestore.cjs && NODE_OPTIONS='--max-old-space-size=1536' vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/server.cjs",
     "build:main-apk": "VITE_APP_VARIANT=JAM_MAIN vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/server.cjs",
     "build:customer-apk": "VITE_APP_VARIANT=JAM_PORTAL vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/server.cjs",
     "build:desktop-exe": "vite build && electron-builder --win --x64 --publish never",
@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^6.0.0",
+    "@capacitor-community/sqlite": "^8.1.1",
     "@capacitor/android": "^6.0.0",
     "@capacitor/app": "^6.0.0",
     "@capacitor/camera": "^6.0.0",

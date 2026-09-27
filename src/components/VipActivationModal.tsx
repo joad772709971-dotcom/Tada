@@ -13,6 +13,8 @@ import { sendSystemSMS } from '../services/smsService';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
+import { unifiedOfflineStoreEngine } from '../services/UnifiedOfflineStoreEngine';
+import { Customer } from '../types';
 
 interface VipActivationModalProps {
   isOpen: boolean;
@@ -138,20 +140,20 @@ export default function VipActivationModal({ isOpen, onClose, profile }: VipActi
         console.warn('Error resetting users device cache:', e.message);
       }
 
-      // 2. Query 'clients' collection
+      // 2. Reset in Store-isolated subcollection: stores/{activeStoreId}/customers
       try {
-        const clientsRef = collection(db, 'clients');
-        const qClients = query(clientsRef, where('phone', '==', cleanPhone));
-        const snap = await getDocs(qClients);
-        for (const d of snap.docs) {
-          await updateDoc(doc(db, 'clients', d.id), {
+        const storeCustRef = doc(db, 'stores', activeStoreId, 'customers', `cust_${activeStoreId}_${cleanPhone}`);
+        const storeCustSnap = await getDoc(storeCustRef);
+        if (storeCustSnap.exists()) {
+          await updateDoc(storeCustRef, {
             registered_mobiles: [],
             registered_pcs: [],
-            hwid: null
+            hwid: null,
+            updatedAt: serverTimestamp()
           });
         }
       } catch (e: any) {
-        console.warn('Error resetting clients device cache:', e.message);
+        console.warn('Error resetting store customer device cache:', e.message);
       }
 
       // 3. Query 'customers' collection
@@ -466,30 +468,9 @@ export default function VipActivationModal({ isOpen, onClose, profile }: VipActi
       })
       .catch(e => console.warn('Fast API register completed or fallback:', e.message));
 
-      // 2. Direct Firestore writes in parallel
-      const clientDocRef = doc(db, 'clients', cleanPhone);
+      // 2. Direct Firestore writes with strict Store Isolation & Unified Users Identity
       const pendingDocRef = doc(db, 'pending_activations', `${activeStoreId}_${cleanPhone}`);
       const userDocRef = doc(db, 'users', cleanPhone);
-
-      const clientData = {
-        id: cleanPhone,
-        uid: finalUidFromApi,
-        storeId: activeStoreId,
-        ownerId: profile?.ownerId || activeStoreId,
-        phone: cleanPhone,
-        name: cleanName,
-        password: cleanPass,
-        status: 'active',
-        customer_app_license: 'active',
-        isCustomerPortalActive: true,
-        isActivated: true,
-        points: 100,
-        totalSpent: 0,
-        repairCount: 0,
-        saleCount: 0,
-        updatedAt: serverTimestamp(),
-        createdAt: serverTimestamp()
-      };
 
       const pendingData = {
         id: `${activeStoreId}_${cleanPhone}`,
@@ -504,24 +485,50 @@ export default function VipActivationModal({ isOpen, onClose, profile }: VipActi
         createdAt: serverTimestamp()
       };
 
-      const userData = {
-        phone: cleanPhone,
+      // Customer document for store isolated subcollection & local store engine
+      const customerData: Partial<Customer> = {
+        id: `cust_${activeStoreId}_${cleanPhone}`,
+        ownerId: activeStoreId,
+        shopId: activeStoreId,
         name: cleanName,
-        password: cleanPass,
-        role: 'client',
+        phone: cleanPhone,
+        portalPassword: cleanPass,
         status: 'active',
-        isCustomerPortalActive: true,
-        customer_app_license: 'active',
-        linkedStores: [activeStoreId],
-        updatedAt: serverTimestamp()
+        tier: 'عميل VIP 👑',
+        businessTier: 'individual',
+        allowCredit: true,
+        debt: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
-      // Execute all database writes concurrently
+      // Store subcollection document (Multi-tenant isolated)
+      const storeSubDocRef = doc(db, 'stores', activeStoreId, 'customers', `cust_${activeStoreId}_${cleanPhone}`);
+
+      // Execute database writes with multi-tenant store isolation (No duplicate collections)
       await Promise.allSettled([
         apiPromise,
-        setDoc(clientDocRef, clientData, { merge: true }),
         setDoc(pendingDocRef, pendingData, { merge: true }),
-        setDoc(userDocRef, userData, { merge: true })
+        setDoc(storeSubDocRef, {
+          ...customerData,
+          storeId: activeStoreId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true }),
+        setDoc(userDocRef, {
+          userId: cleanPhone,
+          uid: cleanPhone,
+          phone: cleanPhone,
+          name: cleanName,
+          password: cleanPass,
+          role: 'CUSTOMER',
+          status: 'ACTIVE',
+          associatedStores: [activeStoreId],
+          linkedStores: [activeStoreId],
+          primaryStoreId: activeStoreId,
+          updatedAt: serverTimestamp()
+        }, { merge: true }),
+        unifiedOfflineStoreEngine.saveCustomerLocal(customerData as Customer, true)
       ]);
 
       // Construct activation object for immediate display

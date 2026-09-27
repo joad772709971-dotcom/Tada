@@ -92,19 +92,70 @@ export async function bootstrapStoresIfNeeded(): Promise<boolean> {
   }
 }
 
-// Fetch all stores
+// Fetch all stores across stores, shops, and b2bStoreProfiles collections for complete multi-app visibility
 export async function getStoresList(): Promise<StoreBranding[]> {
-  const pathVal = 'stores';
+  const storeMap = new Map<string, StoreBranding>();
+
+  // 1. Fetch from stores collection
   try {
-    const snap = await getDocs(collection(db, pathVal));
-    const list: StoreBranding[] = [];
+    const snap = await getDocs(collection(db, 'stores'));
     snap.forEach((docSnap) => {
-      list.push({ id: docSnap.id, ...docSnap.data() } as StoreBranding);
+      const data = docSnap.data();
+      storeMap.set(docSnap.id, { id: docSnap.id, ...data } as StoreBranding);
     });
-    return list;
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, pathVal);
+    console.warn('Note reading stores collection:', error);
   }
+
+  // 2. Fetch from shops collection (where programmer dashboard stores shop accounts)
+  try {
+    const snapShops = await getDocs(collection(db, 'shops'));
+    snapShops.forEach((docSnap) => {
+      const data = docSnap.data();
+      const id = docSnap.id;
+      const ownerId = data.ownerId || id;
+      
+      const branding: StoreBranding = {
+        id: id,
+        name: data.shopName || data.name || 'متجر معتمد',
+        storeStatus: (data.status === 'suspended' || data.status === 'blocked') ? 'suspended' : 'active',
+        phone: data.phone || data.shopPhone || '',
+        address: data.address || data.shopAddress || data.location || '',
+        ...data
+      } as any;
+
+      if (!storeMap.has(id)) {
+        storeMap.set(id, branding);
+      }
+      if (ownerId && !storeMap.has(ownerId)) {
+        storeMap.set(ownerId, { ...branding, id: ownerId });
+      }
+    });
+  } catch (error) {
+    console.warn('Note reading shops collection:', error);
+  }
+
+  // 3. Fetch from b2bStoreProfiles
+  try {
+    const snapB2b = await getDocs(collection(db, 'b2bStoreProfiles'));
+    snapB2b.forEach((docSnap) => {
+      const data = docSnap.data();
+      const id = docSnap.id;
+      if (!storeMap.has(id)) {
+        storeMap.set(id, {
+          id: id,
+          name: data.storeName || data.shopName || 'متجر جملة',
+          storeStatus: 'active',
+          phone: data.phone || '',
+          ...data
+        } as any);
+      }
+    });
+  } catch (error) {
+    console.warn('Note reading b2bStoreProfiles collection:', error);
+  }
+
+  return Array.from(storeMap.values());
 }
 
 // Fetch single store details

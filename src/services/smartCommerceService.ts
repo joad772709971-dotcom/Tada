@@ -66,111 +66,148 @@ export const smartCommerceService = {
 
     // 1. تشفير وتخليق المعرف الفريد والتحقق من وجود الحساب مسبقاً
     const cleanPhone = phone.replace(/[\s\-\(\)]/g, '').trim();
-    const leadId = `${ownerId}_${cleanPhone}`;
-    const leadRef = doc(db, 'leads', leadId);
     
-    // التحقق المباشر من وجود حساب الزبون بالرقم في مجموعة users
+    // التحقق المباشر من وجود حساب الزبون بالرقم في مجموعة الهويات الموحدة users
     const userRef = doc(db, 'users', cleanPhone);
     const userSnap = await getDoc(userRef);
-    const leadSnap = await getDoc(leadRef);
+
+    let finalName = name || 'عميل VIP';
+    let pass = customPassword || '123456';
 
     if (userSnap.exists()) {
-      // الزبون لديه حساب مسبق في النظام (تم إنشاؤه بواسطة هذا المحل أو محل آخر سابقاً)
+      // الزبون لديه حساب مسبق في النظام
       const existingUserData = userSnap.data();
-      const existingStores: string[] = existingUserData.linkedStores || (existingUserData.ownerId ? [existingUserData.ownerId] : []);
+      const existingStores: string[] = Array.isArray(existingUserData.associatedStores) 
+        ? [...existingUserData.associatedStores] 
+        : (Array.isArray(existingUserData.linkedStores) ? [...existingUserData.linkedStores] : (existingUserData.ownerId ? [existingUserData.ownerId] : []));
       
       if (!existingStores.includes(ownerId)) {
         existingStores.push(ownerId);
       }
 
-      const pass = existingUserData.password || customPassword || '123456';
-      const finalName = name || existingUserData.name || 'عميل VIP';
+      pass = existingUserData.password || customPassword || '123456';
+      finalName = name || existingUserData.name || 'عميل VIP';
 
-      // عمل ارتباط للمحل في حساب الزبون بدون تغيير كلمة المرور أو حذف البيانات
+      // تحديث مصفوفة associatedStores في حساب الزبون الموحد
       await setDoc(userRef, {
+        associatedStores: existingStores,
         linkedStores: existingStores,
+        name: finalName,
+        role: existingUserData.role || 'CUSTOMER',
         updatedAt: serverTimestamp(),
       }, { merge: true });
-
-      // إضافة أو تحديث سجل الزبون الخاص بهذا المحل في مجموعة leads
-      const leadPayload: Partial<Lead> = {
-        ownerId: ownerId,
-        phone: cleanPhone,
-        name: finalName,
-        password: pass,
-        lastVisitAt: serverTimestamp()
-      };
-      if (uid) leadPayload.uid = uid;
-
-      if (leadSnap.exists()) {
-        await updateDoc(leadRef, leadPayload);
-      } else {
-        await setDoc(leadRef, {
-          ...leadPayload,
-          points: 0,
-          debt: 0,
-          createdAt: serverTimestamp()
-        });
-      }
-
-      return { id: leadRef.id, ...(leadSnap.exists() ? leadSnap.data() : leadPayload) } as Lead;
     } else {
       // زبون جديد تماماً في النظام -> إنشاء الحساب الموحد
       const generatedPassword = customPassword || Math.floor(100000 + Math.random() * 900000).toString();
-      const finalName = name || 'عميل جديد VIP';
+      pass = generatedPassword;
+      finalName = name || 'عميل جديد VIP';
       const customerEmail = `${cleanPhone}@jam-pro.net`;
 
-      // إنشاء حساب المستخدم الأساسي
+      // إنشاء حساب المستخدم الأساسي في مجموعة users فقط (الهوية الموحدة)
       await setDoc(userRef, {
+        userId: cleanPhone,
         uid: cleanPhone,
         ownerId: ownerId,
         name: finalName,
         phone: cleanPhone,
         email: customerEmail,
-        role: 'customer',
+        role: 'CUSTOMER',
         isProgramUser: false,
-        status: 'active',
+        status: 'ACTIVE',
         isActivated: true,
+        associatedStores: [ownerId],
         linkedStores: [ownerId],
+        primaryStoreId: ownerId,
         password: generatedPassword,
         passwordHash: simpleHash(generatedPassword),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }, { merge: true });
-
-      const newLeadData: Partial<Lead> = {
-        ownerId: ownerId,
-        phone: cleanPhone,
-        name: finalName,
-        password: generatedPassword,
-        points: 0,
-        debt: 0,
-        createdAt: serverTimestamp(),
-        lastVisitAt: serverTimestamp()
-      };
-      if (uid) newLeadData.uid = uid;
-
-      await setDoc(leadRef, newLeadData);
-
-      return { id: leadRef.id, ...newLeadData } as Lead;
     }
+
+    // حفظ بيانات العميل المعزولة داخل المتجر الخاص به فقط: stores/{ownerId}/customers
+    const targetCustId = `cust_${ownerId}_${cleanPhone}`;
+    const storeCustRef = doc(db, 'stores', ownerId, 'customers', targetCustId);
+    await setDoc(storeCustRef, {
+      id: targetCustId,
+      ownerId: ownerId,
+      storeId: ownerId,
+      name: finalName,
+      phone: cleanPhone,
+      status: 'active',
+      password: pass,
+      lastVisitAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    return { 
+      id: targetCustId, 
+      ownerId, 
+      phone: cleanPhone, 
+      name: finalName, 
+      password: pass, 
+      points: 0, 
+      debt: 0 
+    } as unknown as Lead;
   },
 
   /**
-   * دالة التحقق المباشر عند تسجيل دخول الزبون للبوابة
+   * دالة التحقق المباشر عند تسجيل دخول الزبون للبوابة عبر الهويات الموحدة
    */
   verifyAndGetLead: async (phone: string, password: string, ownerId: string): Promise<Lead | null> => {
-    const leadId = `${ownerId}_${phone.trim()}`;
-    const leadRef = doc(db, 'leads', leadId);
-    const leadSnap = await getDoc(leadRef);
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '').trim();
+    
+    // 1. فحص الهوية الموحدة في users
+    const userRef = doc(db, 'users', cleanPhone);
+    const userSnap = await getDoc(userRef);
 
-    if (leadSnap.exists()) {
-      const data = leadSnap.data();
-      // مطابقة الباسورد الـ 6 أرقام المخزن
-      if (data.password === password.trim()) {
-        return { id: leadSnap.id, ...data } as Lead;
+    if (userSnap.exists()) {
+      const uData = userSnap.data();
+      const associated = Array.isArray(uData.associatedStores) 
+        ? uData.associatedStores 
+        : (Array.isArray(uData.linkedStores) ? uData.linkedStores : []);
+      
+      const passMatch = uData.password === password.trim() || uData.currentPassword === password.trim();
+      if (passMatch) {
+        // تأكيد ارتباط الزبون بالمتجر
+        if (!associated.includes(ownerId)) {
+          associated.push(ownerId);
+          await setDoc(userRef, { 
+            associatedStores: associated, 
+            linkedStores: associated,
+            updatedAt: serverTimestamp() 
+          }, { merge: true });
+        }
+        return {
+          id: `cust_${ownerId}_${cleanPhone}`,
+          ownerId,
+          phone: cleanPhone,
+          name: uData.name || 'عميل معتمد',
+          password: password.trim(),
+          points: uData.points || 0,
+          debt: uData.debt || 0
+        } as unknown as Lead;
       }
     }
+
+    // 2. فحص سجل المتجر المعزول: stores/{ownerId}/customers
+    const storeCustRef = doc(db, 'stores', ownerId, 'customers', `cust_${ownerId}_${cleanPhone}`);
+    const storeCustSnap = await getDoc(storeCustRef);
+    if (storeCustSnap.exists()) {
+      const scData = storeCustSnap.data();
+      if (scData.password === password.trim()) {
+        return {
+          id: storeCustSnap.id,
+          ownerId,
+          phone: cleanPhone,
+          name: scData.name || 'عميل معتمد',
+          password: password.trim(),
+          points: scData.points || 0,
+          debt: scData.debt || 0
+        } as unknown as Lead;
+      }
+    }
+
     return null;
   },
 

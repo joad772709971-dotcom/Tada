@@ -431,10 +431,22 @@ export default function App() {
           }
           
           if (targetLatestVersion !== currentAppVersion) {
+            // Background OTA update preparation: DO NOT BLOCK USER OR HALT WORK!
+            liveHotFixEngine.scheduleIdleUpdatePrompt({
+              patchId: `v_${targetLatestVersion.replace(/\./g, '_')}`,
+              version: targetLatestVersion,
+              timestamp: new Date().toISOString(),
+              title: `تحديث برمجي فوري v${targetLatestVersion}`,
+              description: targetWhatsNew || 'تحديث تلقائي تم تنزيله في الخلفية دون مقاطعة لعملك وبحفظ كامل لبياناتك.',
+              isMandatory: false,
+              active: true,
+              forceReload: true
+            });
+
             setUpdateGuard({
               latestVersion: targetLatestVersion,
-              isMandatory: targetIsMandatory,
-              showOptionalBanner: !targetIsMandatory,
+              isMandatory: false,
+              showOptionalBanner: true,
               updateUrl: targetUpdateUrl,
               whatsNew: targetWhatsNew,
             });
@@ -1827,8 +1839,8 @@ export default function App() {
                           }
                         }
                       } else if (platform === 'apk') {
-                        // 1. APK license check
-                        const isMobileAllowed = !!shopOwnerProfile.mobileAppEnabled;
+                        // 1. APK license check (default to enabled unless explicitly false)
+                        const isMobileAllowed = shopOwnerProfile.mobileAppEnabled !== false;
                         if (!isMobileAllowed) {
                           setSecurityError({
                             type: 'apk_license',
@@ -2280,6 +2292,45 @@ export default function App() {
         } catch (err) {
           console.warn('Firestore phone lookup failed:', err);
         }
+
+        // Fallback: Look up by phone inside 'shops' (for shops created in programmer dashboard)
+        if (!userDocSnap) {
+          try {
+            const shopsRef = collection(db, 'shops');
+            const qShops = query(shopsRef, where('phone', '==', cleanPhone));
+            const shopSnap = await getDocs(qShops);
+            if (!shopSnap.empty) {
+              const sDoc = shopSnap.docs[0];
+              const sData = sDoc.data();
+              const ownerUid = sData.ownerId || sData.ownerUid || sDoc.id;
+              email = sData.email || `${cleanPhone}@jam.com`;
+              profileData = {
+                uid: ownerUid,
+                ownerId: ownerUid,
+                name: sData.ownerName || sData.shopName || 'تاجر',
+                shopName: sData.shopName || 'المحل',
+                email: email,
+                phone: cleanPhone,
+                status: 'active',
+                isActivated: true,
+                role: sData.role || 'manager',
+                businessType: sData.businessType || 'mobiles',
+                mobileAppEnabled: true,
+                is_desktop_allowed: true,
+                maxDevices: 99,
+                planTier: 'vip',
+                currentPassword: sData.password || passwordTrim
+              };
+              userDocSnap = { id: ownerUid, data: () => profileData };
+              // Ensure doc exists in users collection for seamless future operations
+              try {
+                await setDoc(doc(db, 'users', ownerUid), profileData, { merge: true });
+              } catch (e) {}
+            }
+          } catch (shopErr) {
+            console.warn('Firestore shop phone lookup fallback failed:', shopErr);
+          }
+        }
       }
 
       // Perform Firebase Auth check
@@ -2386,18 +2437,19 @@ export default function App() {
                 }
               }
 
-              // 2. Check users query on client side to assist APK/EXE
+              // 2. Check users query on client side across unified users identities
               if (!matchedCustomer) {
                 try {
-                  const snapUsers = await getDocs(query(collection(db, 'users'), where('phone', 'in', phoneVariants), where('role', '==', 'customer')));
+                  const snapUsers = await getDocs(query(collection(db, 'users'), where('phone', 'in', phoneVariants)));
                   if (!snapUsers.empty) {
                     snapUsers.forEach(docSnap => {
                       const d = docSnap.data();
                       if (d.password === passwordTrim || d.passwordHash === passwordTrim || d.currentPassword === passwordTrim) {
+                        const storeId = d.primaryStoreId || (Array.isArray(d.associatedStores) && d.associatedStores[0]) || d.ownerId || 'system';
                         matchedCustomer = {
                           id: docSnap.id,
                           name: d.name || `زبون VIP ${docSnap.id}`,
-                          ownerId: d.ownerId || 'system',
+                          ownerId: storeId,
                           phone: d.phone || docSnap.id
                         };
                       }
@@ -2408,73 +2460,7 @@ export default function App() {
                 }
               }
 
-              // 3. Check leads directly on client side to assist APK/EXE
-              if (!matchedCustomer) {
-                try {
-                  const snapLeads = await getDocs(query(collection(db, 'leads'), where('phone', 'in', phoneVariants)));
-                  if (!snapLeads.empty) {
-                    snapLeads.forEach(docSnap => {
-                      const d = docSnap.data();
-                      if (d.password === passwordTrim) {
-                        matchedCustomer = {
-                          id: docSnap.id,
-                          name: d.name || `زبون VIP ${d.phone}`,
-                          ownerId: d.ownerId || 'system',
-                          phone: d.phone || d.phone
-                        };
-                      }
-                    });
-                  }
-                } catch (err: any) {
-                  console.warn('Client-side leads check skipped in App:', err.message);
-                }
-              }
-
-              // 4. Check customers directly on client side to assist APK/EXE
-              if (!matchedCustomer) {
-                try {
-                  const snapCust = await getDocs(query(collection(db, 'customers'), where('phone', 'in', phoneVariants)));
-                  if (!snapCust.empty) {
-                    snapCust.forEach(docSnap => {
-                      const d = docSnap.data();
-                      if (d.password === passwordTrim || d.code === passwordTrim) {
-                        matchedCustomer = {
-                          id: docSnap.id,
-                          name: d.name || `زبون ${d.phone}`,
-                          ownerId: d.ownerId || 'system',
-                          phone: d.phone || d.phone
-                        };
-                      }
-                    });
-                  }
-                } catch (err: any) {
-                  console.warn('Client-side customers check skipped in App:', err.message);
-                }
-              }
-
-              // 5. Check clients directly on client side to assist APK/EXE
-              if (!matchedCustomer) {
-                try {
-                  const snapClients = await getDocs(query(collection(db, 'clients'), where('phone', 'in', phoneVariants)));
-                  if (!snapClients.empty) {
-                    snapClients.forEach(docSnap => {
-                      const d = docSnap.data();
-                      if (d.password === passwordTrim || d.code === passwordTrim) {
-                        matchedCustomer = {
-                          id: docSnap.id,
-                          name: d.name || `زبون ${d.phone}`,
-                          ownerId: d.shopId || d.storeId || 'system',
-                          phone: d.phone || d.phone
-                        };
-                      }
-                    });
-                  }
-                } catch (err: any) {
-                  console.warn('Client-side clients check skipped in App:', err.message);
-                }
-              }
-
-              // 6. Check pending_activations directly on client side to assist APK/EXE
+              // 3. Check pending_activations directly on client side to assist APK/EXE
               if (!matchedCustomer) {
                 try {
                   const snapActivations = await getDocs(query(collection(db, 'pending_activations'), where('customerPhone', 'in', phoneVariants)));
@@ -3047,68 +3033,8 @@ export default function App() {
             </div>
           )}
 
-          {/* Update Guard: Mandatory Fullscreen Modal Block */}
-          {updateGuard && updateGuard.isMandatory && (
-            <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-[#0c101d] via-[#111726] to-[#050811] flex flex-col items-center justify-center p-6 text-center select-none" dir="rtl">
-              <div className="max-w-md w-full p-8 bg-white/5 backdrop-blur-md rounded-[2.5rem] border-2 border-amber-500/30 text-white space-y-6 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 animate-pulse" />
-                
-                <div className="flex justify-center flex-col items-center gap-3">
-                  <ShieldAlert size={64} className="text-amber-500 animate-[pulse_1.5s_infinite]" />
-                  <h2 className="text-2xl font-black text-amber-500 font-sans tracking-tight">إصدار أمني جديد إجباري</h2>
-                </div>
-
-                <p className="text-xs leading-relaxed text-gray-300 font-bold">
-                  تنبيه: لتجنب توقف المزامنة أو فقدان البيانات، يجب الترقية إلى الإصدار الأحدث فوراً. تم إيقاف الإصدارات السابقة مؤقتاً لسلامة حسابك.
-                </p>
-
-                <div className="p-4 bg-navy-950/80 rounded-2xl border border-white/5 space-y-2.5 text-right">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400 font-bold">إصدار جهازك الحالي ({getPlatformType() === 'apk' ? 'هاتف APK' : (getPlatformType() === 'exe' ? 'كمبيوتر EXE' : 'متصفح سحابي')}):</span>
-                    <span className="text-gray-200 font-mono font-black bg-white/10 px-2 py-0.5 rounded">
-                      {getPlatformType() === 'apk' ? CURRENT_VERSION_APK : (getPlatformType() === 'exe' ? CURRENT_VERSION_EXE : CURRENT_VERSION_WEB)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-amber-400 font-bold">الإصدار المطلوب للتشغيل:</span>
-                    <span className="text-amber-400 font-mono font-black bg-amber-500/10 px-2 py-0.5 rounded">{updateGuard.latestVersion}</span>
-                  </div>
-                </div>
-
-                {updateGuard.whatsNew && (
-                  <div className="p-4 bg-black/40 rounded-2xl border border-white/5 text-right space-y-2">
-                    <p className="text-xs font-black text-amber-400">💡 ما الجديد في هذا التحديث:</p>
-                    <div className="text-[11px] text-gray-300 font-medium leading-relaxed max-h-[120px] overflow-y-auto whitespace-pre-wrap pl-1">
-                      {updateGuard.whatsNew}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex flex-col gap-3">
-                  {updateGuard.updateUrl && (
-                    <a 
-                      href={updateGuard.updateUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-4 px-4 bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-110 text-slate-950 font-black rounded-xl text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-amber-500/20"
-                    >
-                      🚀 تحميل وتثبيت التحديث الجديد الآن
-                    </a>
-                  )}
-
-                  <button 
-                    onClick={() => window.location.reload()} 
-                    className="w-full py-3.5 px-4 bg-white/10 hover:bg-white/15 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-                  >
-                    <span>🔄 إعادة تحديث الصفحة لتثبيت فوري</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Update Guard: Optional Closeable Banner */}
-          {updateGuard && !updateGuard.isMandatory && updateGuard.showOptionalBanner && (
+          {/* Update Guard: Non-disruptive Idle-Aware Notification Banner */}
+          {updateGuard && updateGuard.showOptionalBanner && (
             <motion.div
               initial={{ opacity: 0, y: -50 }}
               animate={{ opacity: 1, y: 0 }}
@@ -3130,7 +3056,7 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => setUpdateGuard(prev => prev ? { ...prev, showOptionalBanner: false } : null)}
-                  className="text-gray-400 hover:text-white text-xs font-bold bg-white/10 p-1.5 rounded-full"
+                  className="text-gray-400 hover:text-white text-xs font-bold bg-white/10 p-1.5 rounded-full cursor-pointer"
                 >
                   ✕
                 </button>
@@ -3146,26 +3072,37 @@ export default function App() {
               <div className="flex items-center justify-end gap-2.5 pt-1 border-t border-white/5">
                 <button
                   onClick={() => setUpdateGuard(prev => prev ? { ...prev, showOptionalBanner: false } : null)}
-                  className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-white transition-all"
+                  className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-white transition-all cursor-pointer"
                 >
                   تجاهل الآن
                 </button>
-                {updateGuard.updateUrl ? (
+                <button
+                  onClick={() => {
+                    liveHotFixEngine.triggerSeamlessReload({
+                      patchId: 'user_ota_install',
+                      version: updateGuard.latestVersion,
+                      timestamp: new Date().toISOString(),
+                      title: 'تطبيق التحديث المباشر',
+                      description: updateGuard.whatsNew || '',
+                      isMandatory: false,
+                      active: true,
+                      forceReload: true
+                    });
+                  }}
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 px-4 py-2 rounded-xl text-xs font-black hover:brightness-110 transition-all shadow-md cursor-pointer flex items-center gap-1.5"
+                >
+                  <Zap size={14} />
+                  <span>تطبيق التحديث فورياً بدون تنزيل</span>
+                </button>
+                {updateGuard.updateUrl && (
                   <a
                     href={updateGuard.updateUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 px-4 py-2 rounded-xl text-xs font-black hover:brightness-110 transition-all shadow-md"
+                    className="bg-slate-800 border border-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition-all shadow-md"
                   >
-                    🚀 تحميل وتثبيت التحديث
+                    تحميل APK جديد
                   </a>
-                ) : (
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 px-4 py-2 rounded-xl text-xs font-black hover:brightness-110 transition-all shadow-md"
-                  >
-                    🔄 تحديث الصفحة وتطبيق
-                  </button>
                 )}
               </div>
             </motion.div>

@@ -16,7 +16,10 @@ import { idbService } from '../services/idbService';
 import { fallbackDatabaseSeedForUser, accountingService } from '../services/accountingService';
 import EnvironmentIsolationPanel from './EnvironmentIsolationPanel';
 import AppVersionPublisherPanel from './AppVersionPublisherPanel';
+import LiveHotFixPublisherModal from './LiveHotFixPublisherModal';
+import { liveHotFixEngine } from '../services/LiveHotFixEngine';
 import SafeMigrationPanel from './SafeMigrationPanel';
+import ArchitecturalControlCenter from './ArchitecturalControlCenter';
 import QuotaOperationsMonitor from './QuotaOperationsMonitor';
 import DeepPurgeHub from './DeepPurgeHub';
 import UniversalDeepSearchPurge from './UniversalDeepSearchPurge';
@@ -105,7 +108,7 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
   const [activeTab, setActiveTab] = useState<'shops' | 'versions' | 'maintenance' | 'isolation' | 'config_ads' | 'quota-monitor' | 'search-purge' | 'all-users' | 'distributors' | 'pending' | 'master-config' | 'security' | 'logs' | 'migration' | 'ads'>('shops');
   const [shopsMainSubTab, setShopsMainSubTab] = useState<'shops' | 'distributors' | 'pending'>('shops');
   const [maintenanceSubTab, setMaintenanceSubTab] = useState<'wizard' | 'search-purge' | 'migration' | 'logs' | 'deep-purge'>('wizard');
-  const [isolationSubTab, setIsolationSubTab] = useState<'environments' | 'security'>('environments');
+  const [isolationSubTab, setIsolationSubTab] = useState<'architecture_lock' | 'environments' | 'security'>('architecture_lock');
   const [configAdsSubTab, setConfigAdsSubTab] = useState<'ads' | 'config'>('ads');
   const [updateChannelTab, setUpdateChannelTab] = useState<'apk' | 'exe' | 'web'>('apk');
   const [shopSubTab, setShopSubTab] = useState<'importer' | 'mega_wholesale' | 'wholesale' | 'retailer'>('importer');
@@ -123,8 +126,12 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
   });
   const [isAdModalOpen, setIsAdModalOpen] = useState(false);
   const [adImageFile, setAdImageFile] = useState<File | null>(null);
+  const [isSyncingAllShops, setIsSyncingAllShops] = useState(false);
+  const [syncStatusMsg, setSyncStatusMsg] = useState('');
   const [isAdStatsOpen, setIsAdStatsOpen] = useState(false);
   const [selectedAdForStats, setSelectedAdForStats] = useState<any>(null);
+  const [isHotFixModalOpen, setIsHotFixModalOpen] = useState(false);
+  const [isGlobalPushing, setIsGlobalPushing] = useState(false);
   const [securityAlerts, setSecurityAlerts] = useState<any[]>([]);
   const [securitySubTab, setSecuritySubTab] = useState<'control' | 'risk'>('control');
   const [allQuarantinedIssues, setAllQuarantinedIssues] = useState<any[]>([]);
@@ -1689,20 +1696,18 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
     if (!shopClientsData[shopId]) {
       setLoadingClients(shopId);
       try {
-        const q = query(
-          collection(db, 'clients'),
-          where('storeId', '==', shopId)
-        );
-        const snapshot = await getDocs(q);
+        // استعلام قاعدة بيانات عملاء المتجر المعزولة: stores/{shopId}/customers
+        const storeCustCol = collection(db, 'stores', shopId, 'customers');
+        const snapshot = await getDocs(storeCustCol);
         const clientsList = snapshot.docs.map(doc => {
           const data = doc.data();
           return {
             id: doc.id,
-            uid: data.uid || '',
-            storeId: data.storeId || '',
+            uid: data.uid || doc.id,
+            storeId: shopId,
             phone: data.phone || '',
             name: data.name || '',
-            password: data.password || '',
+            password: data.password || data.portalPassword || '',
             points: Number(data.points ?? 0),
             totalSpent: Number(data.totalSpent ?? 0),
             repairCount: Number(data.repairCount ?? 0),
@@ -1948,6 +1953,21 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
       }
     }
   }, [masterConfig]);
+
+  // Auto-heal & synchronize shops to apps if any discrepancies detected
+  useEffect(() => {
+    if (shops.length === 0) return;
+    const hasUnsynced = shops.some(s => {
+      const u = users.find(usr => usr.uid === (s.ownerId || s.id));
+      return !u || u.mobileAppEnabled === false || !u.is_desktop_allowed;
+    });
+    if (hasUnsynced && !isSyncingAllShops) {
+      const timer = setTimeout(() => {
+        syncAllShopsToApps(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [shops.length, users.length]);
 
   const handleUpdateSecurity = async (updates: any) => {
     setIsSecuritySaving(true);
@@ -3505,9 +3525,156 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
         mobileAppEnabled: newVal,
         updatedAt: serverTimestamp()
       }, { merge: true });
-      setStatus({ type: 'success', message: newVal ? 'تم تفعيل تطبيق الجوال' : 'تم تعطيل تطبيق الجوال' });
+
+      // Synchronize with shops collection
+      const qShops = query(collection(db, 'shops'), where('ownerId', '==', shopOwner.uid));
+      const snap = await getDocs(qShops);
+      for (const d of snap.docs) {
+        await updateDoc(doc(db, 'shops', d.id), {
+          mobileAppEnabled: newVal,
+          updatedAt: serverTimestamp()
+        });
+      }
+      setStatus({ type: 'success', message: newVal ? 'تم تفعيل تطبيق الجوال (APK) للمحل بنجاح' : 'تم تعطيل تطبيق الجوال (APK)' });
     } catch (error: any) {
       setStatus({ type: 'error', message: error.message });
+    }
+  };
+
+  const handleGlobalQuickPush = async () => {
+    setIsGlobalPushing(true);
+    setStatus({ type: 'success', message: '⚡ جاري بث ودفع التحديثات اللحظية لكافة التطبيقات المتصلة...' });
+    try {
+      const res = await liveHotFixEngine.quickPushCurrentState();
+      if (res.success) {
+        setStatus({
+          type: 'success',
+          message: `⚡ تم دفع التحديثات بنجاح خلال (${res.durationMs}ms)! تم بث التعديلات والإضافات لكافة أجهزة وتطبيقات العملاء والمحلات (APK / EXE / Web) وستظهر فوراً عند اتصال الجهاز بالإنترنت بدون تنزيل أي نسخة جديدة.`
+        });
+      } else {
+        setStatus({
+          type: 'error',
+          message: res.errorMessage || 'فشل دفع التحديث السحابي. يرجى التحقق من الاتصال.'
+        });
+      }
+    } catch (err: any) {
+      setStatus({
+        type: 'error',
+        message: err?.message || 'تعذر إتمام الدفع السحابي.'
+      });
+    } finally {
+      setIsGlobalPushing(false);
+    }
+  };
+
+  /**
+   * مزامنة ونشر شاملة لكافة حسابات المحلات لتطبيقات الجوال (APK)، وبوابة الزبائن (Store Pro)، وتطبيق الكمبيوتر (PC)
+   */
+  const syncAllShopsToApps = async (silent = false) => {
+    if (isSyncingAllShops || shops.length === 0) return;
+    setIsSyncingAllShops(true);
+    if (!silent) setSyncStatusMsg('جاري فحص ومزامنة حسابات المحلات عبر قواعد البيانات وتفعيل تراخيص التطبيقات...');
+    
+    try {
+      let syncedCount = 0;
+      for (const shop of shops) {
+        const uid = shop.ownerId || shop.ownerUid || shop.id;
+        if (!uid) continue;
+
+        const shopPhone = shop.phone || shop.shopPhone || '';
+        const shopEmail = shop.email || `${shopPhone || uid}@jam.com`;
+        const shopName = shop.shopName || shop.name || 'المحل';
+        const ownerName = shop.ownerName || shopName;
+        const bType = shop.businessType || 'mobiles';
+
+        // 1. Sync to users collection
+        const userRef = doc(db, 'users', uid);
+        await setDoc(userRef, {
+          uid,
+          ownerId: uid,
+          name: ownerName,
+          shopName,
+          email: shopEmail,
+          phone: shopPhone,
+          status: 'active',
+          isActivated: true,
+          isProgramUser: true,
+          programUserStatus: 'active',
+          mobileAppEnabled: true,
+          is_desktop_allowed: true,
+          maxDevices: 99,
+          max_allowed_mobiles: 99,
+          max_allowed_pcs: 99,
+          businessType: bType,
+          planTier: shop.planTier || 'vip',
+          subscriptionType: 'lifetime',
+          isLifetime: true,
+          isCustomerPortalActive: true,
+          vipSubscriptionActive: true,
+          customer_app_license: 'active',
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        // 2. Sync to stores collection
+        const storeRef = doc(db, 'stores', uid);
+        await setDoc(storeRef, {
+          id: uid,
+          name: shopName,
+          shopName,
+          storeName: shopName,
+          ownerName,
+          phone: shopPhone,
+          address: shop.address || shop.shopAddress || '',
+          storeStatus: 'active',
+          status: 'active',
+          businessType: bType,
+          is_promo_video_enabled: true,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        // 3. Sync to b2bStoreProfiles
+        const b2bRef = doc(db, 'b2bStoreProfiles', uid);
+        await setDoc(b2bRef, {
+          id: uid,
+          ownerId: uid,
+          storeName: shopName,
+          shopName,
+          ownerName,
+          phone: shopPhone,
+          email: shopEmail,
+          status: 'active',
+          businessType: bType,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        // 4. Ensure shop document has active and mobileAppEnabled
+        const shopRef = doc(db, 'shops', shop.id);
+        await setDoc(shopRef, {
+          mobileAppEnabled: true,
+          is_desktop_allowed: true,
+          status: 'active',
+          isActivated: true,
+          ownerId: uid,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        syncedCount++;
+      }
+
+      if (!silent) {
+        setStatus({
+          type: 'success',
+          message: `✅ تم بنجاح مزامنة وتفعيل (${syncedCount}) محل تجاري عبر كافة التطبيقات (تطبيق التجار APK، تطبيق الزبائن Store Pro، تطبيق الكمبيوتر PC)!`
+        });
+      }
+    } catch (err: any) {
+      console.error('Failed to sync shops to apps:', err);
+      if (!silent) {
+        setStatus({ type: 'error', message: 'تعذر إتمام المزامنة: ' + err.message });
+      }
+    } finally {
+      setIsSyncingAllShops(false);
+      setSyncStatusMsg('');
     }
   };
 
@@ -4803,6 +4970,47 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
 
   return (
     <div className="space-y-6">
+      {/* Master Global Push & OTA Broadcast Bar */}
+      <div className="bg-gradient-to-r from-slate-900 via-navy-950 to-slate-900 p-4 rounded-2xl border border-amber-500/40 shadow-2xl flex flex-wrap items-center justify-between gap-4" dir="rtl">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 rounded-2xl text-slate-950 font-black shadow-lg shadow-amber-500/20">
+            <Zap size={24} className={isGlobalPushing ? 'animate-spin' : 'animate-bounce'} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base font-black text-white m-0">مركز دفع التحديثات اللحظي (Global OTA Live Push Engine)</h3>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-bold animate-pulse">
+                ● مباشر لكافة تطبيقات الزبائن والمحلات
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-1">
+              عند إكمال أي تعديلات بالموقع، اضغط "دفع التحديثات الآن" لظهورها فورياً في كل تطبيق مثبت لدى الزبائن أو أصحاب المحلات بمجرد اتصال الجهاز بالإنترنت بدون تنزيل أي نسخة جديدة.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            type="button"
+            onClick={handleGlobalQuickPush}
+            disabled={isGlobalPushing}
+            className="px-5 py-2.5 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm rounded-xl shadow-xl shadow-amber-500/25 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
+          >
+            <Zap size={16} className={isGlobalPushing ? 'animate-spin' : ''} />
+            <span>{isGlobalPushing ? 'جاري بث التحديث سحابياً...' : '⚡ دفع التحديثات الآن لجميع التطبيقات'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsHotFixModalOpen(true)}
+            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Terminal size={15} className="text-cyan-400" />
+            <span>تخصيص الحزمة (Advanced)</span>
+          </button>
+        </div>
+      </div>
+
       {/* Consolidated Main Nav Tabs */}
       <div className="grid grid-cols-2 md:grid-cols-7 gap-2 p-2 bg-navy-950/80 rounded-2xl border border-white/10 shadow-2xl" dir="rtl">
         <button
@@ -5012,6 +5220,50 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
               <span>🛒 تجزئة ({filteredShops.filter(s => getShopLevelClassification(s) === 'retailer').length})</span>
             </button>
           </div>
+
+          {/* Global Multi-App Sync & License Activation Banner */}
+          <div className="bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-600/15 p-4 rounded-2xl border border-amber-500/30 flex flex-wrap items-center justify-between gap-4 shadow-lg shadow-amber-500/5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                <Zap size={20} className={isSyncingAllShops ? "animate-bounce" : ""} />
+              </div>
+              <div>
+                <h4 className="font-black text-sm sm:text-base text-white flex items-center gap-2">
+                  <span>مزامنة ونشر حسابات المحلات للتطبيقات (APK / Store Pro / PC)</span>
+                  <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full">
+                    {shops.length} محل
+                  </span>
+                </h4>
+                <p className="text-xs text-gray-300">
+                  تضمن ظهور كافة المحلات في تطبيق الزبائن، وسوق التجار B2B، وتطبيق الجوال والكمبيوتر مع تفعيل فوري للتراخيص.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => syncAllShopsToApps(false)}
+              disabled={isSyncingAllShops || shops.length === 0}
+              className="px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              {isSyncingAllShops ? (
+                <>
+                  <Loader2 size={16} className="animate-spin text-slate-950" />
+                  <span>جاري المزامنة والتفعيل...</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw size={16} className="text-slate-950" />
+                  <span>مزامنة وتفعيل كافة المحلات للتطبيقات ⚡</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {syncStatusMsg && (
+            <div className="p-3 bg-blue-500/15 border border-blue-500/30 rounded-xl text-blue-300 text-xs font-bold animate-pulse text-center">
+              {syncStatusMsg}
+            </div>
+          )}
 
           {filteredShops.filter(shop => getShopLevelClassification(shop) === shopSubTab).map((shop, idx) => (
             <motion.div
@@ -5542,9 +5794,14 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
                                 const newPass = prompt(`أدخل كلمة المرور الجديدة للزبون (${client.name || 'بدون اسم'}):`, client.password || '');
                                 if (newPass && newPass.trim()) {
                                   try {
-                                    // 1. Update in Firestore clients collection
-                                    const clientDocRef = doc(db, 'clients', client.id);
-                                    await updateDoc(clientDocRef, { password: newPass.trim() });
+                                    // 1. Update in unified users and store subcollection
+                                    const cleanPhone = (client.phone || '').replace(/[\s\-\(\)\+]/g, '').trim();
+                                    if (cleanPhone) {
+                                      await setDoc(doc(db, 'users', cleanPhone), { password: newPass.trim(), updatedAt: serverTimestamp() }, { merge: true });
+                                    }
+                                    if (client.storeId) {
+                                      await setDoc(doc(db, 'stores', client.storeId, 'customers', client.id), { password: newPass.trim(), portalPassword: newPass.trim(), updatedAt: serverTimestamp() }, { merge: true });
+                                    }
                                     
                                     // 2. Sync with Firebase Auth in background
                                     try {
@@ -6043,7 +6300,16 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
       ) : normalizedActiveTab === 'isolation' ? (
         <div className="space-y-6">
           {/* Isolation Subtabs Bar */}
-          <div className="flex bg-navy-950/60 p-1.5 rounded-2xl border border-white/5 gap-2 max-w-xl mx-auto" dir="rtl">
+          <div className="flex bg-navy-950/60 p-1.5 rounded-2xl border border-white/5 gap-2 max-w-2xl mx-auto" dir="rtl">
+            <button
+              onClick={() => { setActiveTab('isolation'); setIsolationSubTab('architecture_lock'); }}
+              className={`flex-1 py-2.5 px-4 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                currentIsolationSubTab === 'architecture_lock' ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 shadow-md font-black' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <ShieldCheck size={16} />
+              <span>مركز الحوكمة والقفل المعماري 🔒</span>
+            </button>
             <button
               onClick={() => { setActiveTab('isolation'); setIsolationSubTab('environments'); }}
               className={`flex-1 py-2.5 px-4 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-2 ${
@@ -6051,7 +6317,7 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
               }`}
             >
               <Globe size={16} />
-              <span>بيئات العزل والتشغيل Staging</span>
+              <span>بيئات العزل Staging</span>
             </button>
             <button
               onClick={() => { setActiveTab('security'); setIsolationSubTab('security'); }}
@@ -6060,11 +6326,13 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
               }`}
             >
               <ShieldAlert size={16} />
-              <span>درع الحماية وتأمين HWID</span>
+              <span>درع الحماية HWID</span>
             </button>
           </div>
 
-          {currentIsolationSubTab === 'environments' ? (
+          {currentIsolationSubTab === 'architecture_lock' ? (
+            <ArchitecturalControlCenter currentAdminEmail={profile?.email} />
+          ) : currentIsolationSubTab === 'environments' ? (
             <EnvironmentIsolationPanel />
           ) : (
             /* Security Shield Panel */
@@ -9217,6 +9485,12 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
         isOpen={!!customerAppTicketData}
         onClose={() => setCustomerAppTicketData(null)}
         ticketData={customerAppTicketData}
+      />
+
+      {/* Global Live OTA Hot-Fix Publisher Modal */}
+      <LiveHotFixPublisherModal
+        isOpen={isHotFixModalOpen}
+        onClose={() => setIsHotFixModalOpen(false)}
       />
     </div>
   );

@@ -81,6 +81,7 @@ import {
 import { adService } from '../services/adService';
 import AdOverlay from './AdOverlay';
 import { smartCommerceService } from '../services/smartCommerceService';
+import { liveHotFixEngine } from '../services/LiveHotFixEngine';
 import { Lead, Quiz, PromoOffer, InventoryItem, UserProfile } from '../types';
 import confetti from 'canvas-confetti';
 
@@ -508,6 +509,26 @@ export default function CustomerPortal() {
   useEffect(() => {
     // Explicitly ensure URL.createObjectURL is supported and clean
     console.log('✅ File download & Blob export engine enabled for Portal / WebView.');
+  }, []);
+
+  // Initialize live OTA hot-fix engine for Customer Portal & apps
+  useEffect(() => {
+    liveHotFixEngine.initialize();
+    const unsubHotFix = liveHotFixEngine.subscribe((patch) => {
+      if (patch && patch.active) {
+        console.log("⚡ [CustomerPortal] Received Live OTA Push update:", patch.title);
+      }
+    });
+
+    const handleHotFixApplied = () => {
+      console.log("⚡ [CustomerPortal] HotFix applied. Refreshing state...");
+    };
+    window.addEventListener('jam:hotfix_applied', handleHotFixApplied);
+
+    return () => {
+      unsubHotFix();
+      window.removeEventListener('jam:hotfix_applied', handleHotFixApplied);
+    };
   }, []);
 
   useEffect(() => {
@@ -1216,38 +1237,70 @@ export default function CustomerPortal() {
           } catch (e) {}
         }
 
-        // 2. Query stores by customer's phone in leads, clients, customers, and pending_activations
-        if (phoneVariants.length > 0) {
+        // 2. Query stores by customer's unified identity in users
+        if (cleanPhone) {
           const storeIds = new Set<string>();
           try {
-            const [leadsSnap, clientsSnap, customersSnap, activationsSnap] = await Promise.all([
-              getDocs(query(collection(db, 'leads'), where('phone', 'in', phoneVariants.slice(0, 10)))),
-              getDocs(query(collection(db, 'clients'), where('phone', 'in', phoneVariants.slice(0, 10)))),
-              getDocs(query(collection(db, 'customers'), where('phone', 'in', phoneVariants.slice(0, 10)))),
-              getDocs(query(collection(db, 'pending_activations'), where('customerPhone', 'in', phoneVariants.slice(0, 10))))
-            ]);
-            leadsSnap.docs.forEach(d => { if (d.data().ownerId) storeIds.add(String(d.data().ownerId)); });
-            clientsSnap.docs.forEach(d => { if (d.data().storeId) storeIds.add(String(d.data().storeId)); });
-            customersSnap.docs.forEach(d => { 
-              const sid = d.data().ownerId || d.data().storeId;
-              if (sid) storeIds.add(String(sid)); 
-            });
+            const userSnap = await getDoc(doc(db, 'users', cleanPhone));
+            if (userSnap.exists()) {
+              const uData = userSnap.data();
+              const stores = Array.isArray(uData.associatedStores) 
+                ? uData.associatedStores 
+                : (Array.isArray(uData.linkedStores) ? uData.linkedStores : []);
+              stores.forEach((s: string) => storeIds.add(String(s)));
+              if (uData.primaryStoreId) storeIds.add(String(uData.primaryStoreId));
+              if (uData.ownerId) storeIds.add(String(uData.ownerId));
+            }
+
+            const activationsSnap = await getDocs(query(collection(db, 'pending_activations'), where('customerPhone', 'in', phoneVariants.slice(0, 10))));
             activationsSnap.docs.forEach(d => { if (d.data().storeId) storeIds.add(String(d.data().storeId)); });
           } catch (e) {
-            console.warn('Could not batch query store ids by phone:', e);
+            console.warn('Could not query store ids by unified user profile:', e);
           }
 
-          // Resolve store docs
+          // Resolve store docs across users, shops, and stores collections
           for (const sId of storeIds) {
             if (!storesMap[sId]) {
               try {
                 const sDoc = await getDoc(doc(db, 'users', sId));
                 if (sDoc.exists()) {
                   storesMap[sDoc.id] = { id: sDoc.id, ...sDoc.data() };
+                } else {
+                  const shopDoc = await getDoc(doc(db, 'shops', sId));
+                  if (shopDoc.exists()) {
+                    storesMap[shopDoc.id] = { id: shopDoc.id, ...shopDoc.data() };
+                  } else {
+                    const storeDoc = await getDoc(doc(db, 'stores', sId));
+                    if (storeDoc.exists()) {
+                      storesMap[storeDoc.id] = { id: storeDoc.id, ...storeDoc.data() };
+                    }
+                  }
                 }
               } catch (e) {}
             }
           }
+        }
+
+        // Also discover all registered shops from shops collection to ensure complete visibility
+        try {
+          const allShopsSnap = await getDocs(collection(db, 'shops'));
+          allShopsSnap.forEach(snap => {
+            const data = snap.data();
+            const sid = snap.id;
+            if (!storesMap[sid] && data.status !== 'suspended' && data.status !== 'blocked') {
+              storesMap[sid] = {
+                id: sid,
+                shopName: data.shopName || data.name || 'متجر معتمد',
+                name: data.shopName || data.name || 'متجر معتمد',
+                ownerName: data.ownerName || '',
+                phone: data.phone || '',
+                address: data.address || '',
+                ...data
+              };
+            }
+          });
+        } catch (e) {
+          console.warn('Note reading registered shops for portal switcher:', e);
         }
 
         // Always include current active shop if fetched
@@ -1349,10 +1402,32 @@ export default function CustomerPortal() {
           if (!snapName.empty) {
             shopDoc = snapName.docs[0];
           } else {
-            // 2. Try finding by ID
+            // 2. Try finding by ID in users
             const direct = await getDoc(doc(db, 'users', activeSlug));
             if (!active) return;
-            if (direct.exists()) shopDoc = direct;
+            if (direct.exists()) {
+              shopDoc = direct;
+            } else {
+              // 3. Fallback: Try finding in shops collection
+              const shopDirect = await getDoc(doc(db, 'shops', activeSlug));
+              if (!active) return;
+              if (shopDirect.exists()) {
+                shopDoc = shopDirect;
+              } else {
+                // 4. Try finding by shopName in shops collection
+                const qShopName = query(collection(db, 'shops'), where('shopName', '==', activeSlug), limit(1));
+                const snapShopName = await getDocs(qShopName);
+                if (!active) return;
+                if (!snapShopName.empty) {
+                  shopDoc = snapShopName.docs[0];
+                } else {
+                  // 5. Try finding in stores collection
+                  const storeDirect = await getDoc(doc(db, 'stores', activeSlug));
+                  if (!active) return;
+                  if (storeDirect.exists()) shopDoc = storeDirect;
+                }
+              }
+            }
           }
         } 
         
@@ -1362,7 +1437,13 @@ export default function CustomerPortal() {
           if (fallbackId) {
             const direct = await getDoc(doc(db, 'users', fallbackId));
             if (!active) return;
-            if (direct.exists()) shopDoc = direct;
+            if (direct.exists()) {
+              shopDoc = direct;
+            } else {
+              const shopDirect = await getDoc(doc(db, 'shops', fallbackId));
+              if (!active) return;
+              if (shopDirect.exists()) shopDoc = shopDirect;
+            }
           }
         }
 
@@ -1375,7 +1456,13 @@ export default function CustomerPortal() {
            if (fallbackId) {
              const direct = await getDoc(doc(db, 'users', fallbackId));
              if (!active) return;
-             if (direct.exists()) shopDoc = direct;
+             if (direct.exists()) {
+               shopDoc = direct;
+             } else {
+               const shopDirect = await getDoc(doc(db, 'shops', fallbackId));
+               if (!active) return;
+               if (shopDirect.exists()) shopDoc = shopDirect;
+             }
            }
         }
 
@@ -1448,16 +1535,16 @@ export default function CustomerPortal() {
           const savedPhone = localStorage.getItem('customerPhone');
           if (savedPhone) {
             try {
-              const [leadsSnap, clientsSnap, customersSnap] = await Promise.all([
-                getDocs(query(collection(db, 'leads'), where('phone', '==', savedPhone))),
-                getDocs(query(collection(db, 'clients'), where('phone', '==', savedPhone))),
-                getDocs(query(collection(db, 'customers'), where('phone', '==', savedPhone)))
-              ]);
-
+              const userSnap = await getDoc(doc(db, 'users', savedPhone));
               const foundStoreIds = new Set<string>();
-              leadsSnap.docs.forEach(doc => { if (doc.data().ownerId) foundStoreIds.add(String(doc.data().ownerId)); });
-              clientsSnap.docs.forEach(doc => { if (doc.data().storeId) foundStoreIds.add(String(doc.data().storeId)); });
-              customersSnap.docs.forEach(doc => { if (doc.data().ownerId || doc.data().storeId) foundStoreIds.add(String(doc.data().ownerId || doc.data().storeId)); });
+              if (userSnap.exists()) {
+                const uData = userSnap.data();
+                const stores = Array.isArray(uData.associatedStores) 
+                  ? uData.associatedStores 
+                  : (Array.isArray(uData.linkedStores) ? uData.linkedStores : []);
+                stores.forEach((id: string) => foundStoreIds.add(String(id)));
+                if (uData.primaryStoreId) foundStoreIds.add(String(uData.primaryStoreId));
+              }
 
               // Include linked stores of authUser if any
               if (authUser?.linkedStores) {
@@ -1998,48 +2085,57 @@ export default function CustomerPortal() {
 
   const checkMultiStoreAndLogin = async (cleanPhone: string, inputName: string, isVip: boolean, vipData?: any) => {
     try {
-      // Pull all matching store-client profile mappings across leads, clients, and customers with a timeout fallback
-      const [leadsSnap, clientsSnap, customersSnap, activationsSnap] = await withTimeout(Promise.all([
-        getDocs(query(collection(db, 'leads'), where('phone', '==', cleanPhone))),
-        getDocs(query(collection(db, 'clients'), where('phone', '==', cleanPhone))),
-        getDocs(query(collection(db, 'customers'), where('phone', '==', cleanPhone))),
-        getDocs(query(collection(db, 'pending_activations'), where('customerPhone', '==', cleanPhone)))
-      ]), 8000, 'تعذر الاستعلام عن المتاجر المرتبطة بالحساب (انتهت المهلة الزمنية للاتصال).');
-
+      // 1. Pull matching store profile mappings directly from unified users identity
       const foundStoreIds = new Set<string>();
       
-      leadsSnap.docs.forEach(doc => {
-        const id = doc.data().ownerId;
-        if (id) foundStoreIds.add(String(id));
-      });
+      try {
+        const userSnap = await getDoc(doc(db, 'users', cleanPhone));
+        if (userSnap.exists()) {
+          const uData = userSnap.data();
+          const stores = Array.isArray(uData.associatedStores) 
+            ? uData.associatedStores 
+            : (Array.isArray(uData.linkedStores) ? uData.linkedStores : []);
+          stores.forEach((s: string) => foundStoreIds.add(String(s)));
+          if (uData.primaryStoreId) foundStoreIds.add(String(uData.primaryStoreId));
+          if (uData.ownerId) foundStoreIds.add(String(uData.ownerId));
+        }
 
-      clientsSnap.docs.forEach(doc => {
-        const id = doc.data().storeId;
-        if (id) foundStoreIds.add(String(id));
-      });
+        const activationsSnap = await withTimeout(
+          getDocs(query(collection(db, 'pending_activations'), where('customerPhone', '==', cleanPhone))),
+          4000,
+          'مهلة الاستعلام عن تفعيلات الحساب'
+        ).catch(() => null);
 
-      customersSnap.docs.forEach(doc => {
-        const id = doc.data().ownerId || doc.data().storeId;
-        if (id) foundStoreIds.add(String(id));
-      });
-
-      activationsSnap.docs.forEach(doc => {
-        const id = doc.data().storeId;
-        if (id) foundStoreIds.add(String(id));
-      });
+        if (activationsSnap) {
+          activationsSnap.docs.forEach(doc => {
+            const id = doc.data().storeId;
+            if (id) foundStoreIds.add(String(id));
+          });
+        }
+      } catch (e) {
+        console.warn('Unified multi-store resolution notice:', e);
+      }
 
       const storeIdList = Array.from(foundStoreIds).filter(Boolean);
 
       let fetchedStores: any[] = [];
       
       if (storeIdList.length > 0) {
-        // Resolve each store info securely in parallel using direct doc reads
+        // Resolve each store info securely in parallel using direct doc reads across users, shops, and stores
         const storeDocs = await Promise.all(
           storeIdList.map(async (id) => {
             try {
               const d = await getDoc(doc(db, 'users', id));
               if (d.exists()) {
                 return { id: d.id, ...d.data() };
+              }
+              const dShop = await getDoc(doc(db, 'shops', id));
+              if (dShop.exists()) {
+                return { id: dShop.id, ...dShop.data() };
+              }
+              const dStore = await getDoc(doc(db, 'stores', id));
+              if (dStore.exists()) {
+                return { id: dStore.id, ...dStore.data() };
               }
             } catch (err) {
               console.warn(`[Portal Login] Could not resolve store details for store ID: ${id}`, err);

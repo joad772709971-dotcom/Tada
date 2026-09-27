@@ -512,6 +512,7 @@ export default function MarketUI({ profile }: { profile: UserProfile | null }) {
   // New Merchant Directory & Search States
   const [allMerchants, setAllMerchants] = useState<any[]>([]);
   const [allProfiles, setAllProfiles] = useState<any[]>([]);
+  const [allShops, setAllShops] = useState<any[]>([]);
   const [merchantSearchName, setMerchantSearchName] = useState('');
   const [merchantSearchLocation, setMerchantSearchLocation] = useState('');
   const [merchantSearchProduct, setMerchantSearchProduct] = useState('');
@@ -1595,17 +1596,59 @@ export default function MarketUI({ profile }: { profile: UserProfile | null }) {
       console.warn("Bypass store profiles query trigger error", e);
     }
 
+    let unsubShops = () => {};
+    try {
+      unsubShops = onSnapshot(collection(db, 'shops'), (snap) => {
+        const list: any[] = [];
+        snap.forEach(docSnap => {
+          const d = docSnap.data();
+          list.push({
+            id: docSnap.id,
+            uid: d.ownerId || docSnap.id,
+            ownerId: d.ownerId || docSnap.id,
+            name: d.ownerName || d.shopName || 'تاجر',
+            shopName: d.shopName || 'المحل',
+            email: d.email || '',
+            phone: d.phone || d.shopPhone || '',
+            role: d.role || 'manager',
+            accountType: 'merchant',
+            status: d.status || 'active',
+            businessType: d.businessType || 'mobiles',
+            ...d
+          });
+        });
+        const filtered = list.filter(s => s.status !== 'deleted' && s.isDeleted !== true);
+        setAllShops(filtered);
+      }, (err) => {
+        console.warn("Bypass shops snapshot permission error", err);
+      });
+    } catch (e) {
+      console.warn("Bypass shops query trigger error", e);
+    }
+
     return () => {
       unsubUsers();
       unsubProfiles();
+      unsubShops();
     };
   }, []);
 
   const mergedMerchants = useMemo(() => {
+    // Combine merchants from users and shops collections
+    const merchantMap = new Map<string, any>();
+    allMerchants.forEach(m => merchantMap.set(m.id || m.uid, m));
+    allShops.forEach(s => {
+      const key = s.id || s.uid || s.ownerId;
+      if (!merchantMap.has(key)) {
+        merchantMap.set(key, s);
+      }
+    });
+    const pool = Array.from(merchantMap.values());
+
     // RETAIL CUSTOMER ISOLATION (طرد الزبائن من صفحة التجار):
     // Strict inline filter so it ONLY displays accounts with merchant accountType or merchant/wholesaler/importer/distributor/supplier/superadmin roles.
     // Completely block, filter out, and hide consumer/retail buyer accounts (accountType === 'customer' or role === 'customer' or ends with @jam-pro.net).
-    const activeMerchants = allMerchants.filter(m => {
+    const activeMerchants = pool.filter(m => {
       // Exclude deleted accounts/merchants
       if (m.status === 'deleted' || m.deleted === true || m.isDeleted === true) {
         return false;
@@ -1711,7 +1754,7 @@ export default function MarketUI({ profile }: { profile: UserProfile | null }) {
     });
 
     return consolidated;
-  }, [allMerchants, allProfiles]);
+  }, [allMerchants, allProfiles, allShops]);
 
   // Clean classification for the 3 Merchants Sub-Tabs: 1. مستورد | 2. جملة الجملة | 3. جملة
   const filteredMerchantsBySubTab = useMemo(() => {

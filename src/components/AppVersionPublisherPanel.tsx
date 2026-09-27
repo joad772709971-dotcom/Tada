@@ -16,6 +16,9 @@ import {
 } from 'lucide-react';
 import { VersionControlService, VersionCheckResult } from '../services/versionControlService';
 import { environmentService } from '../services/environmentService';
+import { liveHotFixEngine } from '../services/LiveHotFixEngine';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase';
 import LiveHotFixPublisherModal from './LiveHotFixPublisherModal';
 
 export default function AppVersionPublisherPanel() {
@@ -50,6 +53,38 @@ export default function AppVersionPublisherPanel() {
     fetchServerConfig();
   }, []);
 
+  const [isQuickPushing, setIsQuickPushing] = useState(false);
+
+  const handleQuickPushAll = async () => {
+    setIsQuickPushing(true);
+    setSaveStatus(null);
+    try {
+      const res = await liveHotFixEngine.quickPushCurrentState(
+        `تحديث شامل فوري v${latestVersion}`,
+        releaseNotes
+      );
+      if (res.success) {
+        setSaveStatus({
+          type: 'success',
+          message: `⚡ تم دفع التحديثات بنجاح خلال (${res.durationMs}ms)! تم بث التحديث فورياً لكافة أجهزة وتطبيقات العملاء والمحلات (APK / EXE / Web) بدون تنزيل.`
+        });
+        fetchServerConfig();
+      } else {
+        setSaveStatus({
+          type: 'error',
+          message: res.errorMessage || 'فشل دفع التحديث الفوري. يرجى التحقق من الاتصال.'
+        });
+      }
+    } catch (err: any) {
+      setSaveStatus({
+        type: 'error',
+        message: err?.message || 'تعذر استكمال الدفع الفوري.'
+      });
+    } finally {
+      setIsQuickPushing(false);
+    }
+  };
+
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -63,6 +98,30 @@ export default function AppVersionPublisherPanel() {
       updateUrlExe,
       updateUrlWeb,
     });
+
+    // Also sync settings/app_config so App.tsx update listener triggers
+    try {
+      const appConfigRef = doc(db, 'settings', 'app_config');
+      await setDoc(appConfigRef, {
+        latestVersion,
+        latestVersion_apk: latestVersion,
+        latestVersion_exe: latestVersion,
+        latestVersion_web: latestVersion,
+        minSupportedVersion,
+        isMandatory: false,
+        whatsNew: releaseNotes,
+        whatsNew_apk: releaseNotes,
+        whatsNew_exe: releaseNotes,
+        whatsNew_web: releaseNotes,
+        updateUrl: updateUrlWeb,
+        updateUrl_apk: updateUrlApk,
+        updateUrl_exe: updateUrlExe,
+        updateUrl_web: updateUrlWeb,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (cfgErr) {
+      console.warn("Could not sync settings/app_config:", cfgErr);
+    }
 
     setIsSaving(false);
     if (success) {
@@ -94,14 +153,24 @@ export default function AppVersionPublisherPanel() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={handleQuickPushAll}
+            disabled={isQuickPushing}
+            className="px-4 py-2 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          >
+            <Zap className={`w-4 h-4 ${isQuickPushing ? 'animate-spin' : 'animate-bounce'}`} />
+            <span>{isQuickPushing ? 'جاري الدفع السحابي...' : '⚡ دفع فوري شامل لكافة التطبيقات الآن'}</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setIsHotFixModalOpen(true)}
-            className="px-3.5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-emerald-500/40 text-emerald-400 hover:text-emerald-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <Zap className="w-4 h-4" />
-            <span>دفع تحديث حار فوري بدون تنزيل (Push Live Hot-Fix)</span>
+            <Code className="w-4 h-4" />
+            <span>تخصيص الحزمة (Advanced)</span>
           </button>
 
           <button

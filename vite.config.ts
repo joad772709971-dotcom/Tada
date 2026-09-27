@@ -52,7 +52,12 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       sourcemap: false,
       minify: 'esbuild',
-      chunkSizeWarningLimit: 5000,
+      target: 'esnext',
+      rollupOptions: {
+        maxParallelFileOps: 1,
+        cache: false,
+      },
+      chunkSizeWarningLimit: 10000,
     },
     server: {
       port: 3000,

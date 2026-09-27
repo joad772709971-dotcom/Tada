@@ -1,0 +1,155 @@
+
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="c-bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="50%" stop-color="#090D16" />
+      <stop offset="100%" stop-color="#030712" />
+    </linearGradient>
+
+    <!-- Metallic Gold/Bronze Bevel -->
+    <linearGradient id="c-gold-bevel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="40%" stop-color="#D97706" />
+      <stop offset="80%" stop-color="#78350F" />
+      <stop offset="100%" stop-color="#B45309" />
+    </linearGradient>
+
+    <!-- Cyan Neon Gradient -->
+    <linearGradient id="c-cyan-neon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F0FF" />
+      <stop offset="100%" stop-color="#0EA5E9" />
+    </linearGradient>
+
+    <!-- Magenta Neon Gradient -->
+    <linearGradient id="c-magenta-neon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EC4899" />
+      <stop offset="100%" stop-color="#8B5CF6" />
+    </linearGradient>
+
+    <!-- Phone Screen Gradient -->
+    <linearGradient id="c-screen-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E1B4B" />
+      <stop offset="35%" stop-color="#312E81" />
+      <stop offset="70%" stop-color="#4C1D95" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+
+    <!-- Filters -->
+    <filter id="c-glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="c-glow-magenta" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="c-drop-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="20" stdDeviation="28" flood-color="#000000" flood-opacity="0.85" />
+    </filter>
+  </defs>
+
+  <!-- Ambient Backdrop -->
+  <rect width="1024" height="1024" fill="#0A0E1A" rx="0" />
+
+  <!-- Layered 3D Metallic Base Platter -->
+  <rect x="80" y="80" width="864" height="864" rx="210" fill="#1E293B" stroke="url(#c-gold-bevel)" stroke-width="12" filter="url(#c-drop-shadow)" />
+  <rect x="108" y="108" width="808" height="808" rx="182" fill="url(#c-bg-grad)" stroke="#38BDF8" stroke-width="4" opacity="0.8" />
+
+  <!-- Outer Holographic Orbital Rings -->
+  <circle cx="512" cy="512" r="390" fill="none" stroke="url(#c-cyan-neon)" stroke-width="8" stroke-dasharray="180 40 80 40" filter="url(#c-glow-cyan)" />
+  <circle cx="512" cy="512" r="415" fill="none" stroke="url(#c-magenta-neon)" stroke-width="6" stroke-dasharray="120 60 200 60" filter="url(#c-glow-magenta)" />
+
+  <!-- Floating 3D Tool Accents Behind Phone -->
+  <!-- 1. Chrome Wrench (Top Left) -->
+  <g transform="translate(180, 260) rotate(-35) scale(1.3)" opacity="0.75">
+    <path d="M0 20 C0 8 12 0 24 0 C32 0 40 6 44 14 L30 28 L32 36 L40 38 L54 24 C62 28 68 36 68 48 C68 60 56 68 44 68 L-100 212 C-112 224 -130 224 -142 212 C-154 200 -154 182 -142 170 Z" fill="#94A3B8" stroke="#F8FAFC" stroke-width="4" />
+  </g>
+
+  <!-- 2. Golden Gear (Top Right) -->
+  <g transform="translate(710, 240) scale(1.1)" filter="url(#c-glow-magenta)">
+    <circle cx="50" cy="50" r="40" fill="none" stroke="url(#c-gold-bevel)" stroke-width="18" stroke-dasharray="14 10" />
+    <circle cx="50" cy="50" r="22" fill="#0F172A" stroke="#38BDF8" stroke-width="4" />
+  </g>
+
+  <!-- 3. Retail VIP Tag (Bottom Right) -->
+  <g transform="translate(720, 560) rotate(25) scale(1.3)" filter="url(#c-drop-shadow)">
+    <path d="M0 0 L50 0 L90 40 L40 90 L0 50 Z" fill="#D97706" stroke="#FDE047" stroke-width="4" />
+    <circle cx="25" cy="25" r="8" fill="#0F172A" />
+  </g>
+
+  <!-- Central 3D High-Tech Smartphone -->
+  <g filter="url(#c-drop-shadow)">
+    <!-- Phone Metallic Bezel Frame -->
+    <rect x="320" y="160" width="384" height="704" rx="54" fill="#0F172A" stroke="#E2E8F0" stroke-width="8" />
+    <rect x="328" y="168" width="368" height="688" rx="46" fill="#1E293B" stroke="url(#c-cyan-neon)" stroke-width="3" />
+
+    <!-- Phone Screen Display -->
+    <rect x="338" y="178" width="348" height="668" rx="38" fill="url(#c-screen-grad)" />
+
+    <!-- Top Status Bar (Time 12:00, Battery, Punch-hole Camera) -->
+    <circle cx="512" cy="204" r="8" fill="#000000" stroke="#334155" stroke-width="2" />
+    <text x="375" y="210" font-family="'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="700" fill="#F8FAFC">12:00</text>
+    <g transform="translate(620, 196) scale(0.9)">
+      <path d="M0 12 L4 12 M6 9 L10 9 M12 6 L16 6 M18 3 L22 3" stroke="#F8FAFC" stroke-width="3" stroke-linecap="round" />
+      <rect x="28" y="2" width="22" height="12" rx="3" fill="none" stroke="#F8FAFC" stroke-width="2" />
+      <rect x="30" y="4" width="14" height="8" rx="1" fill="#22C55E" />
+    </g>
+
+    <!-- Central Glowing Verification Checkmark with Magnifying Glass -->
+    <g filter="url(#c-glow-cyan)">
+      <!-- Outer Cyan Circle -->
+      <circle cx="512" cy="450" r="115" fill="#0A1026" stroke="#00F0FF" stroke-width="14" />
+      <circle cx="512" cy="450" r="92" fill="#0F172A" stroke="url(#c-gold-bevel)" stroke-width="5" />
+      
+      <!-- Big Checkmark (✓) -->
+      <path d="M460 445 L495 480 L565 410" fill="none" stroke="#00F0FF" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
+      
+      <!-- 3D Magnifying Glass Handle -->
+      <path d="M595 530 L660 600" stroke="url(#c-magenta-neon)" stroke-width="22" stroke-linecap="round" filter="url(#c-glow-magenta)" />
+      <path d="M595 530 L660 600" stroke="#FDE047" stroke-width="12" stroke-linecap="round" />
+    </g>
+
+    <!-- Mini System Icons Grid on Phone Screen -->
+    <g transform="translate(370, 600)">
+      <!-- Icon 1: Settings -->
+      <circle cx="30" cy="30" r="20" fill="#3B82F6" />
+      <circle cx="30" cy="30" r="8" fill="#F8FAFC" />
+      <!-- Icon 2: Store -->
+      <circle cx="102" cy="30" r="20" fill="#EC4899" />
+      <path d="M96 24 L108 24 L110 36 L94 36 Z" fill="#F8FAFC" />
+      <!-- Icon 3: Files -->
+      <circle cx="174" cy="30" r="20" fill="#F59E0B" />
+      <rect x="166" y="24" width="16" height="12" rx="2" fill="#F8FAFC" />
+      <!-- Icon 4: All Systems -->
+      <circle cx="246" cy="30" r="20" fill="#10B981" />
+      <circle cx="246" cy="30" r="6" fill="#F8FAFC" />
+    </g>
+
+    <!-- Prominent Branding on Phone: "JAM System Pro" -->
+    <text x="512" y="695" font-family="'Segoe UI', 'Montserrat', Arial, sans-serif" font-size="28" font-weight="900" 
+          letter-spacing="2" text-anchor="middle" fill="#FFFFFF" filter="url(#c-glow-cyan)">JAM System Pro</text>
+
+    <!-- VIP Customer Subtitle -->
+    <text x="512" y="725" font-family="'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="800" 
+          letter-spacing="4" text-anchor="middle" fill="#FDE047">CARE VIP PORTAL</text>
+
+    <!-- Bottom App Dock (Phone, Message, Browser, Camera) -->
+    <g transform="translate(365, 760)">
+      <circle cx="30" cy="25" r="20" fill="#22C55E" />
+      <circle cx="102" cy="25" r="20" fill="#3B82F6" />
+      <circle cx="174" cy="25" r="20" fill="#8B5CF6" />
+      <circle cx="246" cy="25" r="20" fill="#EF4444" />
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+/jspm_packages/
+/web_runtime/
+dist/
+/dist/
+
+# Android build outputs and caches
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+
+# Logs and databases
+*.log
+*.sqlite
+*.zip
+.env
+.env.local
+.env.*.local
+
+# Desktop & Release outputs
+dist-desktop/
+release/
+release-output/
+*.keystore
+*.jks
+

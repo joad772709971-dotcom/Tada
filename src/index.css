@@ -1,0 +1,1057 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", "Cairo", ui-sans-serif, system-ui, sans-serif;
+  
+  --text-xs: 0.875rem; /* Shipped up one tier (formerly text-xs was 0.75rem, now 0.875rem) */
+  --text-sm: 1rem;    /* Shipped up one tier (formerly text-sm was 0.875rem, now 1rem) */
+  --text-base: 1.125rem; /* Shipped up one tier (formerly text-base was 1rem, now 1.125rem) */
+  --text-lg: 1.25rem;    /* Shipped up one tier (formerly text-lg was 1.125rem, now 1.25rem) */
+  --text-xl: 1.5rem;     /* Shipped up one tier */
+  --text-2xl: 1.75rem;   /* Shipped up one tier */
+  --text-3xl: 2.125rem;
+  --text-4xl: 2.625rem;
+  --text-5xl: 3.5rem;
+  --text-6xl: 4.5rem;
+
+  --color-navy-900: var(--navy-900);
+  --color-navy-950: var(--navy-950);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-app-bg: var(--app-bg);
+  --color-card-bg: var(--card-bg);
+  --color-smoke-white: var(--smoke-white);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-sidebar-icon: var(--sidebar-icon);
+  --color-header-bg: var(--header-bg);
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  /* Fixed Royal Gold & Deep Navy Identity */
+  --color-royal-gold: #D4AF37;
+  --color-deep-navy: #001f3f;
+  --color-gold-glow: #FFD700;
+
+  /* Override default grays with hex for high contrast */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #6b7280; /* Darkened from #9ca3af */
+  --color-gray-500: #4b5563; /* Darkened from #6b7280 */
+  --color-gray-600: #374151;
+  --color-gray-700: #1f2937;
+  --color-gray-800: #111827;
+  --color-gray-900: #020617;
+
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+
+  --color-purple-100: #f3e8ff;
+  --color-purple-600: #9333ea;
+
+  --animate-marquee: marquee 30s linear infinite;
+  --animate-scan: scan 2s linear infinite;
+
+  @keyframes marquee {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+  }
+
+  @keyframes scan {
+    0% { top: 0; }
+    50% { top: 100%; }
+    100% { top: 0; }
+  }
+}
+
+/* Force Rich Colors with Safe Contrast Toggles */
+:root {
+  --navy-950: #faf7f0; /* Cream/Ivory tone exact base background for Day mode */
+  --navy-900: #4a3525; /* Classic Rich Brown cards */
+  --navy-800: #94a3b8; /* Explicit border-slate-400 (Grey) */
+  --navy-700: #94a3b8; /* Outer borders Grey */
+  --app-bg: #faf7f0;   /* main background in bright light */
+  --card-bg: #4a3525;  /* Rich Classic Brown cards */
+  --smoke-white: #faf7f0; 
+  --brand-primary: #cf8a3c; /* premium legacy brand gold */
+  --brand-secondary: #eab308; 
+  --sidebar-bg: #faf7f0;
+  --sidebar-text: #000000; /* Solid Black text for sidebar in Day mode */
+  --sidebar-icon: #4a3525; 
+  --header-bg: #faf7f0;
+  --clock-text: #000000;
+  --report-bar-bg: #4a3525;
+  --report-bar-text: #ffffff;
+  --input-text: #000000;
+  --input-bg: #FFFFFF;
+  --input-border: #94a3b8;
+  --base-font-size: 13.5px;
+  --card-opacity: 1;
+  --font-heading: "Outfit", "Cairo", sans-serif;
+  --heading-color: #000000;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --base-font-size: 14.5px;
+  }
+}
+
+@media (min-width: 1440px) {
+  :root {
+    --base-font-size: 15.5px;
+  }
+}
+
+.dark {
+  --navy-950: #110d0a; /* Deep volcanic espresso charcoal black background */
+  --navy-900: #231a14; /* Component and card containers - Rich smoked dark oak wood finish */
+  --navy-800: #3f3025; /* borders - Rich smoked dark oak wood finish borders */
+  --navy-700: #3f3025; /* outer borders */
+  --app-bg: #110d0a;   /* core dark canvas */
+  --card-bg: #231a14;  /* base smoked dark oak finish */
+  --smoke-white: #110d0a; 
+  --brand-primary: #22d3ee; /* Cosmic Cyan for main golden highlight paths */
+  --brand-secondary: #06b6d4; 
+  --sidebar-bg: #110d0a;
+  --sidebar-text: #fdfbf7; /* crisp bright ivory white text */
+  --sidebar-icon: #22d3ee; 
+  --header-bg: #110d0a;
+  --clock-text: #fdfbf7;
+  --report-bar-bg: #231a14;
+  --report-bar-text: #fdfbf7;
+  --input-text: #FFFFFF;
+  --input-bg: #231a14;
+  --input-border: #3f3025;
+  --heading-color: #fdfbf7;
+}
+
+  /* Fallback for html2canvas to avoid modern color parsing errors like oklab */
+  .bg-brand-primary-light { background-color: rgba(79, 70, 229, 0.1); }
+  .bg-success-light { background-color: rgba(16, 185, 129, 0.1); }
+  .bg-danger-light { background-color: rgba(239, 68, 68, 0.1); }
+  .bg-warning-light { background-color: rgba(245, 158, 11, 0.1); }
+
+@layer base {
+  * {
+    -webkit-text-size-adjust: none !important;
+    text-size-adjust: none !important;
+  }
+
+  html {
+    font-size: var(--base-font-size, 12px);
+    scroll-behavior: smooth;
+    user-select: none; /* Disable text selection for desktop feel */
+    -webkit-user-select: none;
+  }
+
+  body {
+    @apply bg-app-bg text-gray-900 font-sans antialiased;
+    direction: rtl;
+    overflow: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading) !important;
+    color: var(--heading-color, inherit);
+    letter-spacing: -0.02em;
+  }
+  
+  .text-xs {
+    font-size: 0.85rem !important; /* Larger than default 0.75rem */
+  }
+
+  .text-\[10px\] {
+    font-size: 0.75rem !important;
+  }
+  
+  .dark body {
+    @apply bg-app-bg text-white font-sans antialiased;
+  }
+}
+
+@layer components {
+  .bounce-hover {
+    @apply transition-transform duration-200 hover:scale-105 active:scale-95;
+  }
+  
+  .card-glass {
+    @apply bg-card-bg dark:bg-card-bg border border-gray-200 dark:border-white/5 shadow-xl shadow-black/5 rounded-[2rem] transition-all duration-500 overflow-hidden relative;
+    opacity: var(--card-opacity);
+  }
+
+  .dark .card-glass {
+    @apply bg-card-bg border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.3)];
+  }
+
+  .card-glass:hover {
+    @apply shadow-[0_25px_60px_rgba(0,0,0,0.08)] -translate-y-1.5 border-brand-primary/30 scale-[1.005];
+  }
+
+  .dark .card-glass:hover {
+    @apply shadow-[0_25px_60px_rgba(0,0,0,0.4)] border-brand-primary/20;
+  }
+
+  /* Page Specific Light Themes */
+  .light-accounting {
+    background-color: #ffffff !important;
+    background-image: 
+      linear-gradient(rgba(229, 231, 235, 0.5) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(229, 231, 235, 0.5) 1px, transparent 1px);
+    background-size: 20px 20px;
+    color: #1a202c !important;
+  }
+
+  .light-customers {
+    background-color: #f0fdf4 !important; /* Pastel Green */
+    color: #166534 !important;
+  }
+  
+  .light-suppliers {
+    background-color: #eff6ff !important; /* Pastel Blue */
+    color: #1e40af !important;
+  }
+
+  .light-chats {
+    background-color: #fffaf0 !important; /* Pastel Orange/Cream */
+    color: #9a3412 !important;
+  }
+
+  /* Force light mode text colors for these sections */
+  html:not(.dark) .light-accounting *,
+  html:not(.dark) .light-customers *,
+  html:not(.dark) .light-suppliers *,
+  html:not(.dark) .light-chats * {
+    color: inherit;
+  }
+
+  html:not(.dark) .card-glass {
+    @apply bg-white border-gray-200 shadow-lg;
+  }
+
+  /* Numbers Monospace */
+  .num-mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+    letter-spacing: -0.05em;
+  }
+
+  /* Metallic Neumorphism Card */
+  .card-metallic {
+    background: linear-gradient(145deg, #e6e6e6, #ffffff);
+    border: 1px solid #d1d5db;
+    box-shadow: 6px 6px 12px #cacaca, -6px -6px 12px #ffffff;
+    border-radius: 2rem;
+    transition: all 0.3s ease;
+  }
+
+  .dark .card-metallic {
+    background: linear-gradient(145deg, #0f172a, #1e293b);
+    border: 1px solid #1e293b;
+    box-shadow: 6px 6px 12px #020617, -6px -6px 12px #1e293b;
+  }
+
+  /* Metallic Copper Button */
+  .btn-metallic-copper {
+    background: linear-gradient(180deg, #b87333 0%, #cd7f32 50%, #8b4513 100%);
+    color: white;
+    font-weight: 900;
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+      0 2px 4px -1px rgba(0, 0, 0, 0.06),
+      inset 0 1px 1px rgba(255, 255, 255, 0.3);
+    border: 1px solid #8b4513;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-metallic-copper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: 0.5s;
+  }
+
+  .btn-metallic-copper:hover::after {
+    left: 100%;
+    transition: 0.5s;
+  }
+
+  /* Metallic Cobalt Button */
+  .btn-metallic-cobalt {
+    background: linear-gradient(180deg, #0047ab 0%, #002366 50%, #001233 100%);
+    color: white;
+    font-weight: 900;
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+      0 2px 4px -1px rgba(0, 0, 0, 0.06),
+      inset 0 1px 1px rgba(255, 255, 255, 0.3);
+    border: 1px solid #001233;
+  }
+
+  .btn-primary {
+    @apply px-8 py-5 bg-navy-950 text-brand-primary rounded-2xl font-black shadow-lg transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed text-2xl;
+    border: 4px solid var(--brand-primary) !important;
+    box-shadow: 0 6px 0px rgba(0, 0, 0, 0.45) !important;
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(3px) !important;
+    box-shadow: 0 3px 0px rgba(0, 0, 0, 0.45) !important;
+  }
+
+  .btn-secondary {
+    @apply px-8 py-5 bg-white text-navy-900 rounded-2xl font-black hover:bg-gray-100 transition-all flex items-center justify-center gap-3 shadow-md;
+    border: 4px solid var(--input-border) !important;
+    box-shadow: 0 6px 0px rgba(0, 0, 0, 0.3) !important;
+  }
+  .btn-secondary:active:not(:disabled) {
+    transform: translateY(3px) !important;
+    box-shadow: 0 3px 0px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .input-field {
+    @apply w-full p-6 py-4 rounded-[2.5rem] outline-none focus:ring-8 focus:ring-brand-primary/10 transition-all placeholder:text-gray-500 font-black text-xl;
+    color: var(--input-text);
+    background-color: var(--input-bg);
+    border: 4px solid var(--input-border);
+  }
+
+  .label-field {
+    @apply text-xl font-black text-navy-950 dark:text-gray-100 mb-4 block uppercase tracking-[0.2em];
+  }
+
+  .marquee-container {
+    @apply overflow-hidden whitespace-nowrap bg-navy-900 text-brand-primary py-2 font-bold text-sm border-y border-brand-primary/20 flex items-center;
+  }
+
+  .marquee-content {
+    @apply inline-block animate-marquee min-w-full;
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(79, 70, 229, 0.2) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-brand-primary/20 rounded-full;
+  }
+
+  .drag-region {
+    -webkit-app-region: drag;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  /* 🔩 الأزرار العريضة والصلبة مع ارتداد ميكانيكي لجميع الأجهزة وتمنع التداخل (Chunky 3D Tactile Buttons) */
+  .btn-thick,
+  button:not([class*="p-1"]):not([class*="p-0.5"]):not(.close-btn):not([class*="w-6"]):not([class*="h-6"]):not([class*="w-8"]):not([class*="h-8"]):not([class*="w-10"]):not([class*="h-10"]):not([class*="absolute"]):not([class*="toggle-sidebar-btn"]) {
+    border-width: 4px !important;
+    border-style: solid !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.02em !important;
+    text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 5px 0px rgba(0,0,0,0.3) !important;
+    transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out !important;
+  }
+  .btn-thick:active:not(:disabled),
+  button:not([class*="p-1"]):not([class*="p-0.5"]):not(.close-btn):not([class*="w-6"]):not([class*="h-6"]):not([class*="w-8"]):not([class*="h-8"]):not([class*="w-10"]):not([class*="h-10"]):not([class*="absolute"]):not([class*="toggle-sidebar-btn"]):active:not(:disabled) {
+    transform: translateY(3px) !important;
+    box-shadow: 0 2px 0px rgba(0,0,0,0.4) !important;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-navy-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-brand-primary/30 rounded-full hover:bg-brand-primary/50 transition-colors;
+}
+
+
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-brand-primary/20 hover:bg-brand-primary/40;
+}
+
+.fake-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999 !important;
+  margin: 0 !important;
+  background: var(--app-bg) !important;
+}
+
+/* HIGH CONTRAST DAY/NIGHT THEME ENFORCEMENT LAWS */
+html:not(.dark) {
+  --heading-color: #000000 !important;
+  color-scheme: light;
+}
+
+html:not(.dark) body:not(.login-ui-frozen):not(.market-ui-frozen):not(.customers-ui-frozen) {
+  color: #000000 !important;
+  background-color: #faf7f0 !important;
+  font-weight: 850 !important;
+}
+
+/* Bolster font bolding in Day mode to erase faint/fuzzy rendering of Arabic/English content */
+html:not(.dark) p:not(.no-override),
+html:not(.dark) span:not(.no-override):not([class*="text-"]),
+html:not(.dark) label:not(.no-override),
+html:not(.dark) div:not(.card-glass *):not(.no-override):not([class*="text-"]):not([class*="bg-"]),
+html:not(.dark) td:not(.no-override) {
+  font-weight: 850 !important;
+}
+html:not(.dark) h1, html:not(.dark) h2, html:not(.dark) h3, html:not(.dark) h4, html:not(.dark) h5, html:not(.dark) h6 {
+  font-weight: 950 !important;
+}
+
+/* Force Brown cards with 2px grey border in Day Mode, EXCEPT in frozen screens */
+html:not(.dark) .card-glass:not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *) {
+  background-color: #4a3525 !important;
+  border: 2px solid #5a4535 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Inside active Day mode brown cards: ensure Pure White typography with high font-weights, preserving button/input and specific colors */
+html:not(.dark) .card-glass:not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *) *:not(button):not(button *):not(input):not(select):not(textarea):not(option):not(.no-override):not([class*="text-"]) {
+  color: #FFFFFF !important;
+  font-weight: 850 !important;
+}
+
+/* Convert white container blocks in Day Mode to gorgeous warm sand with distinct high-contrast border definition */
+html:not(.dark) .bg-white:not(button):not(input):not(select):not(textarea):not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *),
+html:not(.dark) [class*="bg-white"]:not(button):not(input):not(select):not(textarea):not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *) {
+  background-color: #faf7f0 !important;
+  border: 2px solid #cfc9ba !important;
+}
+
+/* On the warm ivory background sections of Day Mode: all general text, headers must be Solid Black, preserving specific custom color utility classes */
+html:not(.dark) body:not(.login-ui-frozen):not(.market-ui-frozen):not(.customers-ui-frozen) *:not(.card-glass *):not(.glass-kpi *):not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *):not(button):not(button *):not(.btn-primary *):not(.btn-secondary *):not(input):not(select):not(textarea):not(.text-white):not([class*="text-emerald"]):not([class*="text-green"]):not([class*="text-red"]):not([class*="text-rose"]):not([class*="text-amber"]):not([class*="text-yellow"]):not([class*="text-blue"]):not([class*="text-sky"]):not([class*="text-indigo"]):not([class*="text-brand"]):not([class*="text-[#"]):not([class*="text-orange"]):not([class*="text-purple"]):not([class*="text-pink"]):not([class*="text-teal"]):not([class*="text-cyan"]):not([class*="text-danger"]):not([class*="text-success"]) {
+  color: #000000 !important;
+}
+
+/* Ensure data grids, tables, and th/td outside cards are Bold and Black with deep grey borders in Day Mode */
+html:not(.dark) table:not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *),
+html:not(.dark) th:not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *),
+html:not(.dark) td:not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *),
+html:not(.dark) thead:not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *) {
+  color: #000000 !important;
+  border-color: #cfc9ba !important;
+  font-weight: 850 !important;
+}
+
+/* Force excellent black contrast for text on bright backgrounds, except inside dark elements/buttons/excluded screens */
+html:not(.dark) .text-white:not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *):not(.card-glass *):not(.glass-kpi *):not(button *):not(button):not(.btn-primary *):not(.btn-metallic-copper *):not(.btn-metallic-cobalt *):not([class*="bg-brand"] *):not([class*="bg-green"] *):not([class*="bg-blue"] *):not([class*="bg-red"] *):not([class*="bg-rose"] *):not([class*="bg-amber"] *):not([class*="bg-indigo"] *):not([class*="bg-orange"] *):not([class*="bg-navy"] *),
+html:not(.dark) [class*="text-white"]:not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *):not(.card-glass *):not(.glass-kpi *):not(button *):not(button):not(.btn-primary *):not(.btn-metallic-copper *):not(.btn-metallic-cobalt *):not([class*="bg-brand"] *):not([class*="bg-green"] *):not([class*="bg-blue"] *):not([class*="bg-red"] *):not([class*="bg-rose"] *):not([class*="bg-amber"] *):not([class*="bg-indigo"] *):not([class*="bg-orange"] *):not([class*="bg-navy"] *) {
+  color: #000000 !important;
+}
+
+/* Hardened Contrast Support for Buttons/Badges inside Light Mode */
+html:not(.dark) .btn-primary,
+html:not(.dark) .btn-primary *,
+html:not(.dark) .btn-metallic-copper,
+html:not(.dark) .btn-metallic-copper *,
+html:not(.dark) .btn-metallic-cobalt,
+html:not(.dark) .btn-metallic-cobalt *,
+html:not(.dark) .bg-green-600 *,
+html:not(.dark) .bg-red-600 *,
+html:not(.dark) .bg-rose-600 *,
+html:not(.dark) .bg-blue-600 *,
+html:not(.dark) .bg-amber-600 *,
+html:not(.dark) .bg-indigo-600 *,
+html:not(.dark) .bg-orange-600 *,
+html:not(.dark) .bg-brand-primary * {
+  color: #FFFFFF !important;
+}
+
+html:not(.dark) .text-gray-500,
+html:not(.dark) [class*="text-gray-500"] {
+  color: #1e293b !important; /* deep slate black for perfect clarity */
+}
+
+html:not(.dark) .text-gray-400,
+html:not(.dark) [class*="text-gray-400"] {
+  color: #334155 !important; /* Enhanced Contrast */
+}
+
+html:not(.dark) .text-gray-300,
+html:not(.dark) [class*="text-gray-300"] {
+  color: #334155 !important; /* Enhanced Contrast */
+}
+
+html:not(.dark) .text-gray-200,
+html:not(.dark) [class*="text-gray-200"] {
+  color: #1E293B !important; /* Enhanced Contrast */
+}
+
+html:not(.dark) .text-gray-100,
+html:not(.dark) [class*="text-gray-100"] {
+  color: #0F172A !important; /* Deep charcoal */
+}
+
+html:not(.dark) .border-white\/10,
+html:not(.dark) [class*="border-white/10"],
+html:not(.dark) .border-white\/20,
+html:not(.dark) [class*="border-white/20"] {
+  border-color: #94A3B8 !important; /* Grey */
+}
+
+html:not(.dark) .border-white\/5,
+html:not(.dark) [class*="border-white/5"] {
+  border-color: #CBD5E1 !important;
+}
+
+html:not(.dark) .border-white\/30,
+html:not(.dark) [class*="border-white/30"] {
+  border-color: #94A3B8 !important;
+}
+
+html:not(.dark) .text-brand-primary,
+html:not(.dark) [class*="text-brand-primary"] {
+  color: #cf8a3c !important; /* Golden premium continuity */
+}
+
+html:not(.dark) ::-webkit-scrollbar-track {
+  background-color: #faf7f0;
+}
+
+html:not(.dark) ::-webkit-scrollbar-thumb {
+  background-color: #94A3B8;
+}
+
+html:not(.dark) button:not(.btn-primary):not(.btn-metallic-copper):not(.btn-metallic-cobalt):not([class*="bg-"]):not([class*="text-white"]):not(.card-glass *) {
+  color: #000000 !important;
+}
+
+/* absolute input field contrast enforcement rules */
+html:not(.dark) input,
+html:not(.dark) select,
+html:not(.dark) textarea {
+  color: #000000 !important;
+  background-color: #fdfbf7 !important; /* soft white-cream */
+  border: 2px solid #4a3525 !important; /* Thick Rich Brown borders */
+  font-weight: 850 !important;
+  text-shadow: none !important;
+}
+
+html:not(.dark) input::placeholder,
+html:not(.dark) textarea::placeholder {
+  color: #64748B !important;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  color: #FFFFFF !important;
+  background-color: #0c1a2e !important; /* deep rich dark navy */
+  border: 2px solid #eab308 !important; /* Luminescent clear amber gold border */
+  font-weight: 850 !important;
+  text-shadow: none !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* stop visual layout shifting or geometry animations on spacing properties */
+* {
+  transition-property: background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, filter, backdrop-filter !important;
+}
+
+/* ==========================================================================
+   NEXT-GEN ADAPTIVE INTERFACE SYSTEMS (JAM SYSTEM PRO VISUAL BLACKPRINT)
+   ========================================================================== */
+
+/* 1. LUXURY METALLIC THEME: Solid Volcanic Espresso Charcoal Black */
+.dark body:not(.login-ui-frozen):not(.market-ui-frozen):not(.customers-ui-frozen), 
+.dark .bg-app-bg:not(.login-ui-frozen):not(.market-ui-frozen):not(.customers-ui-frozen), 
+.dark main:not(.login-ui-frozen):not(.market-ui-frozen):not(.customers-ui-frozen) {
+  background: #110d0a !important;
+  color: #fdfbf7 !important;
+}
+
+.dark .card-glass:not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *),
+.dark .glass-kpi:not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *) {
+  background-color: #231a14 !important;
+  border: 2px solid #3f3025 !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6) !important;
+}
+
+.dark .card-glass:not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *) *:not(button):not(button *):not(input):not(select):not(textarea):not(option):not(.no-override):not([class*="text-"]),
+.dark .glass-kpi:not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *) *:not(button):not(button *):not(input):not(select):not(textarea):not(option):not(.no-override):not([class*="text-"]) {
+  color: #fdfbf7 !important;
+}
+
+/* Cosmic Cyan indicators & numbers in dark mode */
+.dark .num-mono:not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *),
+.dark [class*="text-cyan-"],
+.dark [class*="text-sky-"],
+.dark .text-brand-primary:not(.login-ui-frozen *):not(.market-ui-frozen *):not(.customers-ui-frozen *) {
+  color: #22d3ee !important;
+}
+
+@keyframes liquidMetalAnimation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* 2. GLASSMORPHIC CARDS: Backdrop Blur MD with real-time border lightning overlay */
+.glass-kpi {
+  background: rgba(18, 27, 46, 0.45) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(212, 175, 55, 0.22) !important;
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.35),
+    inset 0 0 15px rgba(255, 255, 255, 0.03),
+    0 0 15px -2px rgba(212, 175, 55, 0.05) !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-kpi::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -200%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(212, 175, 55, 0.12) 50%,
+    transparent
+  );
+  transform: skewX(-30deg);
+  animation: borderLightningPulse 7s infinite ease-in-out;
+}
+
+@keyframes borderLightningPulse {
+  0% { left: -200%; }
+  35% { left: 150%; }
+  100% { left: 150%; }
+}
+
+.glass-kpi:hover {
+  border-color: rgba(212, 175, 55, 0.55) !important;
+  box-shadow: 
+    0 12px 40px 0 rgba(0, 0, 0, 0.45),
+    0 0 25px 5px rgba(212, 175, 55, 0.18) !important;
+  transform: translateY(-4px) scale(1.008);
+}
+
+/* 3. 3D CHROME & LUXURY GOLD: Border gradients and micro-transitions */
+.dark .btn-primary, 
+.dark .luxury-btn, 
+.dark .luxury-widget {
+  background: linear-gradient(135deg, #121824 0%, #060913 100%) !important;
+  border: 1.5px solid transparent !important;
+  background-clip: padding-box, border-box !important;
+  background-origin: padding-box, border-box !important;
+  background-image: linear-gradient(135deg, #121824 0%, #060913 100%), 
+                    linear-gradient(135deg, #94a3b8 0%, #D4AF37 40%, #1e293b 70%, #ffd700 100%) !important;
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.3), 
+    inset 0 1px 1px rgba(255, 255, 255, 0.05),
+    0 0 10px rgba(212, 175, 55, 0.08) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.dark .btn-primary:hover, 
+.dark .luxury-btn:hover, 
+.dark .luxury-widget:hover {
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.5), 
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    0 0 20px 4px rgba(212, 175, 55, 0.25) !important;
+  transform: translateY(-2px) scale(1.015);
+  filter: brightness(1.12);
+}
+
+.glow-pulse-lux {
+  animation: luxuryGlowPulse 4s infinite alternate ease-in-out;
+}
+
+@keyframes luxuryGlowPulse {
+  0% { box-shadow: 0 0 4px rgba(212, 175, 55, 0.12), inset 0 0 4px rgba(212, 175, 55, 0.05); }
+  100% { box-shadow: 0 0 16px rgba(212, 175, 55, 0.35), inset 0 0 8px rgba(212, 175, 55, 0.12); }
+}
+
+/* 4. PLATFORM-AWARE RESPONSIVE INJECTIONS */
+
+/* Windows Desktop (EXE Resolution scale context) */
+@media (min-width: 1280px) {
+  table, .ledger-table {
+    border-spacing: 0 6px !important;
+  }
+  
+  .desktop-scaling-matrix {
+    font-size: 1.025rem !important;
+  }
+
+  .desktop-wide-layout {
+    max-width: 100% !important;
+    margin: 0 auto !important;
+  }
+  
+  th, td {
+    padding-top: 14px !important;
+    padding-bottom: 14px !important;
+  }
+}
+
+/* Android Mobile Layout Safeguards */
+@media (max-width: 768px) {
+  html {
+    font-size: 8px !important; /* Compact high-density touch scale */
+  }
+
+  body {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  main {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    padding-top: 0.5rem !important;
+  }
+
+  .p-4, .p-5, .p-6, .p-8 {
+    padding: 0.75rem !important; /* Space optimization */
+  }
+
+  .rounded-\[1\.8rem\], 
+  .rounded-\[2rem\], 
+  .rounded-\[2\.2rem\], 
+  .rounded-\[2\.5rem\],
+  .rounded-\[3\.5rem\] {
+    border-radius: 1.1rem !important; /* Compact modern bounds */
+  }
+
+  .mobile-touch-target {
+    min-height: 44px !important;
+    padding: 10px 14px !important;
+  }
+  
+  .mobile-tight-flex {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+}
+
+/* 5. HARDENED ENTERPRISE PRINT MEDIA EMULATION ENGINE */
+@media print {
+  /* Enforce visibility rules and clean page resets */
+  body {
+    visibility: hidden !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 10pt !important;
+    font-family: 'Cairo', 'Tajawal', system-ui, sans-serif !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    user-select: auto !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Printable Area Isolation */
+  #printableArea, 
+  #printableArea *,
+  .printableArea, 
+  .printableArea *,
+  .printable, 
+  .printable * {
+    visibility: visible !important;
+  }
+
+  #printableArea, 
+  .printableArea {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Universal print hide anchors for UI noise, buttons, bars and modals */
+  aside, 
+  header, 
+  footer, 
+  button, 
+  nav, 
+  .no-print, 
+  .sidebar, 
+  .unified-header, 
+  #floating-menu,
+  #jam-print-overlay .jam-print-header,
+  #jam-print-overlay .jam-print-settings-box,
+  #jam-print-overlay-header,
+  .jam-print-header-btns,
+  .curtain-drawer-content button[type="button"],
+  .global-actions,
+  [title="فتح القائمة الجانبية"],
+  .not-printable {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
+  /* Ensure main body stretches to fill viewport limit cleanly */
+  main, .flex-1, .custom-scrollbar, .overflow-y-auto {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+  }
+
+  /* Stabilize container card visuals on paper layout */
+  .card-glass, .glass-kpi, .card-metallic {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  img {
+    max-height: 2.2in !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Standard corporate laser-printing page templates (A4 Default size bounds) */
+  @page {
+    size: A4 portrait;
+    margin: 15mm 10mm 15mm 10mm;
+  }
+
+  /* Strict column and table break rules */
+  table, tr, td, th {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 15px !important;
+    margin-bottom: 20px !important;
+  }
+
+  th {
+    border-bottom: 2.5px solid #000000 !important;
+    color: #000000 !important;
+    font-weight: 900 !important;
+    font-size: 10pt !important;
+    background: #f1f5f9 !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  td {
+    border-bottom: 1px solid #7f8c8d !important;
+    color: #000000 !important;
+    font-size: 9.5pt !important;
+    padding: 6px 8px !important;
+  }
+
+  /* Embedded Thermal POS Receipt Printers (58mm and 80mm compact dimensions) */
+  .pos-receipt-print, 
+  .thermal-pos-container {
+    width: 100% !important;
+    max-width: 80mm !important; /* Default 80mm Receipt layout boundaries */
+    margin: 0 auto !important;
+    padding: 2mm !important;
+    font-weight: 800 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* A separate size profile option for 58mm POS receipt wrappers */
+  .pos-receipt-print-58 {
+    max-width: 58mm !important;
+    padding: 1mm !important;
+  }
+
+  .pos-receipt-print td, .pos-receipt-print th,
+  .pos-receipt-print-58 td, .pos-receipt-print-58 th {
+    font-size: 8pt !important;
+    padding: 3px 2px !important;
+    font-weight: 850 !important;
+  }
+
+  .thermal-high-contrast-text {
+    font-family: monospace !important;
+    font-weight: 950 !important;
+    color: #000000 !important;
+  }
+
+  /* Force page splits */
+  .page-divider-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+}
+
+/* Custom Header Fluid/Movable Scroll Hide rules */
+.custom-header-scroll::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.custom-header-scroll {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* ABSOLUTE STRUCTURAL OVERRIDES FOR DEVELOPER THEME AND OVERRIDES SWITCHES */
+.hide-global-borders, 
+.hide-global-borders * {
+  border: none !important;
+  border-width: 0px !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.kill-global-spinners, 
+.kill-global-spinners * {
+  animation: none !important;
+  -webkit-animation: none !important;
+}
+.kill-global-spinners svg.animate-spin, 
+.kill-global-spinners .animate-spin,
+.kill-global-spinners .animate-spin-slow,
+.kill-global-spinners [class*="spinner"],
+.kill-global-spinners [class*="Loader"] {
+  display: none !important;
+}
+
+/* Zero-delay transition override & flat theme visual purge for Instant Thunderbolt mode */
+.instant-mode,
+.instant-mode *,
+.instant-mode *::before,
+.instant-mode *::after {
+  transition-duration: 0ms !important;
+  transition-property: none !important;
+  animation-duration: 0ms !important;
+  transition-delay: 0ms !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  text-shadow: none !important;
+}
+
+.instant-mode .card-glass,
+.instant-mode .card-glass:hover,
+.instant-mode .glass-kpi,
+.instant-mode .glass-kpi:hover,
+.instant-mode .card-metallic,
+.instant-mode .card-metallic:hover {
+  box-shadow: none !important;
+  background-image: none !important;
+  border: none !important;
+  transform: none !important;
+}
+
+/* Custom 3D Shiny Moving Light text style for Login page name */
+.text-3d-shiny-live {
+  font-weight: 950 !important;
+  font-family: var(--font-heading) !important;
+  text-shadow: 
+    0 1px 0 #cc9922,
+    0 2px 0 #b3801b,
+    0 3px 0 #996614,
+    0 4px 0 #804c0d,
+    0 5px 6px rgba(0, 0, 0, 0.7),
+    0 0 15px rgba(255, 215, 0, 0.5) !important;
+  background: linear-gradient(
+    120deg, 
+    #ffd700 25%, 
+    #ffffff 45%, 
+    #ffffff 55%, 
+    #ffd700 75%
+  ) !important;
+  background-size: 200% 100% !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  color: transparent !important;
+  animation: textShineSweep 3.5s infinite linear !important;
+}
+
+@keyframes textShineSweep {
+  0% { background-position: 150% 0; }
+  100% { background-position: -50% 0; }
+}
+
+/* Golden shimmer for system name in top bar */
+.gold-shimmer-topbar {
+  font-weight: 900 !important;
+  background: linear-gradient(
+    120deg, 
+    #d4af37 30%, 
+    #fff3d1 45%, 
+    #ffffff 50%, 
+    #fff3d1 55%, 
+    #d4af37 70%
+  ) !important;
+  background-size: 200% auto !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  color: transparent !important;
+  animation: textShineSweep 4s infinite linear !important;
+  display: inline-block !important;
+}
+
+
+
+

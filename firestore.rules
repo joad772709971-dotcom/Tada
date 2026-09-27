@@ -1,0 +1,217 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Master SuperAdmin helper function (مالك النظام والمدير العام)
+    function isSuperAdmin() {
+      return (request.auth != null && (
+        (request.auth.token.email != null && (
+          request.auth.token.email.lower() == 'a777503191@gmail.com' ||
+          request.auth.token.email.lower() == 'joad7723@gmail.com' ||
+          request.auth.token.email.lower() == 'system@jam-pro.net'
+        )) ||
+        request.auth.uid == 'master-a777503191' ||
+        request.auth.uid == 'master-joad7723'
+      ));
+    }
+
+    // Authenticated User helper function
+    function isAuthenticated() {
+      return request.auth != null || isSuperAdmin();
+    }
+
+    // عزل المتاجر: فحص ما إذا كان المستخدم مسجلاً كموظف رسمي داخل stores/{storeId}/employees/{uid}
+    function isStoreEmployee(storeId) {
+      return isAuthenticated() && exists(/databases/$(database)/documents/stores/$(storeId)/employees/$(request.auth.uid));
+    }
+
+    // فحص ما إذا كان هناك عقد ارتباط نشط وساري المفعول في store_links
+    function hasActiveStoreLink(storeId) {
+      let forwardLink = 'link_' + storeId + '_' + request.auth.uid;
+      let reverseLink = 'link_' + request.auth.uid + '_' + storeId;
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/store_links/$(forwardLink)) &&
+         get(/databases/$(database)/documents/store_links/$(forwardLink)).data.status == 'ACTIVE') ||
+        (exists(/databases/$(database)/documents/store_links/$(reverseLink)) &&
+         get(/databases/$(database)/documents/store_links/$(reverseLink)).data.status == 'ACTIVE')
+      );
+    }
+
+    // الصلاحية الشاملة للوصول للمتجر: المالك، الموظف المسجل، أو عبر عقد ارتباط ساري المفعول
+    function canAccessStore(storeId) {
+      return isSuperAdmin() || (
+        isAuthenticated() && (
+          request.auth.uid == storeId ||
+          request.auth.token.storeId == storeId ||
+          request.auth.token.shopId == storeId ||
+          isStoreEmployee(storeId) ||
+          hasActiveStoreLink(storeId) ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+           (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.primaryStoreId == storeId ||
+            (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.associatedStores is list &&
+             storeId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.associatedStores)))
+        )
+      );
+    }
+
+    // 1. مسار الفهرس السريع للمستخدمين (user_index/{userId})
+    match /user_index/{userId} {
+      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+    }
+
+    // 2. تحديثات وتنبيهات الطوارئ
+    match /emergency_hotfixes/{hotfixId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // 3. معمارية المتاجر المعزولة الحديثة (Multi-Tenant Store Isolation)
+    // يمنع استعلام أو قراءة بيانات المتجر إلا للمالك أو الموظف المسجل داخل stores/{storeId}/employees أو عبر store_links سارية
+    match /stores/{storeId} {
+      allow read, write: if canAccessStore(storeId);
+
+      // حصر كافة الفواتير، المخزون، الزبائن، المبيعات، والديون داخل المتجر المعني حصراً
+      match /invoices/{invoiceId} {
+        allow read, write: if canAccessStore(storeId);
+      }
+
+      match /inventory/{productId} {
+        allow read, write: if canAccessStore(storeId);
+      }
+
+      match /customers/{customerId} {
+        allow read, write: if canAccessStore(storeId);
+      }
+
+      match /employees/{employeeId} {
+        allow read, write: if canAccessStore(storeId);
+      }
+
+      match /vouchers/{voucherId} {
+        allow read, write: if canAccessStore(storeId);
+      }
+
+      match /maintenance/{jobId} {
+        allow read, write: if canAccessStore(storeId);
+      }
+
+      match /sales/{saleId} {
+        allow read, write: if canAccessStore(storeId);
+      }
+
+      match /debts/{debtId} {
+        allow read, write: if canAccessStore(storeId);
+      }
+
+      match /{subcollection}/{docId} {
+        allow read, write: if canAccessStore(storeId);
+      }
+    }
+
+    // 4. عقود الارتباط والمفاتيح الشبكية store_links
+    match /store_links/{linkId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        isSuperAdmin() || 
+        request.resource.data.sourceStore == request.auth.uid ||
+        canAccessStore(request.resource.data.sourceStore)
+      );
+    }
+
+    match /store_db_registry/{storeId} {
+      allow read, write: if canAccessStore(storeId);
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isSuperAdmin() || isAuthenticated() || settingId == 'app_config';
+    }
+
+    match /b2bStoreProfiles/{profileId} {
+      allow read: if true;
+      allow write: if canAccessStore(profileId);
+    }
+
+    // 5. ملفات المستخدمين الموحدة (Unified Users Identity Registry)
+    // تقييد صارم: كل مستخدم يقرأ ويعدل بياناته الخاصة فقط (إضافة للأدمن المشرف العام)
+    match /users/{userId} {
+      allow read: if isSuperAdmin() || (isAuthenticated() && (
+        request.auth.uid == userId ||
+        request.auth.token.phone == userId ||
+        (request.auth.token.email != null && request.auth.token.email.split('@')[0] == userId)
+      ));
+      allow write: if isSuperAdmin() || (isAuthenticated() && (
+        request.auth.uid == userId ||
+        request.auth.token.phone == userId ||
+        (request.auth.token.email != null && request.auth.token.email.split('@')[0] == userId)
+      ));
+    }
+
+    // 6. سوق الجملة العام المتاح لكافة التجار المعتمدين
+    match /public_market_feed/{feedId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // 7. طلبات B2B بين التجار والمستوردين
+    match /relayed_b2b_orders/{orderId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // 8. كتالوج باقات وأسعار الاتصالات وسداد الفواتير
+    match /telecom_packages_catalog/{packageId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // 9. ارتباطات B2B القديمة والمفاتيح المتبادلة
+    match /shops/{shopId} {
+      allow read: if canAccessStore(shopId);
+      allow write: if canAccessStore(shopId);
+
+      match /{subcollection}/{docId} {
+        allow read, write: if canAccessStore(shopId);
+      }
+    }
+
+    match /b2bConnections/{connId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /wholesaleProducts/{productId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    match /unifiedB2bKeys/{keyId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /b2bConnectionKeys/{keyId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /b2b_connection_requests/{requestId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // 10. كروت التفعيل المبدئية وسجلات النظام
+    match /pending_activations/{actId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /systemLogs/{logId} {
+      allow read: if isSuperAdmin();
+      allow write: if isAuthenticated();
+    }
+
+    match /system/{sysDoc} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // 11. الصلاحيات الكاملة للأدمن المشرف العام
+    match /{document=**} {
+      allow read, write: if isSuperAdmin();
+    }
+  }
+}

@@ -65,10 +65,10 @@ import { FirebaseProjectRouter } from './services/FirebaseProjectRouter';
 import { validateUserVariantAccess, getCurrentVariant, APP_VARIANTS } from './services/variantEngine';
 import { antiTamperLicenseVault } from './services/AntiTamperLicenseVault';
 
-const CURRENT_VERSION = "2.5.1";
-const CURRENT_VERSION_APK = "2.5.1";
-const CURRENT_VERSION_EXE = "2.5.1";
-const CURRENT_VERSION_WEB = "2.5.1";
+const CURRENT_VERSION = "4.0.1";
+const CURRENT_VERSION_APK = "4.0.1";
+const CURRENT_VERSION_EXE = "4.0.1";
+const CURRENT_VERSION_WEB = "4.0.1";
 
 // Smart Multi-Layered Platform & Build Sensing
 const getPlatformType = (): 'apk' | 'exe' | 'web' => {
@@ -431,25 +431,35 @@ export default function App() {
           }
           
           if (targetLatestVersion !== currentAppVersion) {
-            // Background OTA update preparation: DO NOT BLOCK USER OR HALT WORK!
-            liveHotFixEngine.scheduleIdleUpdatePrompt({
-              patchId: `v_${targetLatestVersion.replace(/\./g, '_')}`,
-              version: targetLatestVersion,
-              timestamp: new Date().toISOString(),
-              title: `تحديث برمجي فوري v${targetLatestVersion}`,
-              description: targetWhatsNew || 'تحديث تلقائي تم تنزيله في الخلفية دون مقاطعة لعملك وبحفظ كامل لبياناتك.',
-              isMandatory: false,
-              active: true,
-              forceReload: true
-            });
+            const isAlreadyDismissed = typeof window !== 'undefined' && (
+              localStorage.getItem('jam_dismissed_update_version') === targetLatestVersion ||
+              localStorage.getItem('jam_installed_update_version') === targetLatestVersion ||
+              localStorage.getItem('jam_last_applied_patch_id') === `v_${targetLatestVersion.replace(/\./g, '_')}`
+            );
 
-            setUpdateGuard({
-              latestVersion: targetLatestVersion,
-              isMandatory: false,
-              showOptionalBanner: true,
-              updateUrl: targetUpdateUrl,
-              whatsNew: targetWhatsNew,
-            });
+            if (!isAlreadyDismissed) {
+              // Background OTA update preparation: DO NOT BLOCK USER OR HALT WORK!
+              liveHotFixEngine.scheduleIdleUpdatePrompt({
+                patchId: `v_${targetLatestVersion.replace(/\./g, '_')}`,
+                version: targetLatestVersion,
+                timestamp: new Date().toISOString(),
+                title: `تحديث برمجي فوري v${targetLatestVersion}`,
+                description: targetWhatsNew || 'تحديث تلقائي تم تنزيله في الخلفية دون مقاطعة لعملك وبحفظ كامل لبياناتك.',
+                isMandatory: false,
+                active: true,
+                forceReload: true
+              });
+
+              setUpdateGuard({
+                latestVersion: targetLatestVersion,
+                isMandatory: false,
+                showOptionalBanner: true,
+                updateUrl: targetUpdateUrl,
+                whatsNew: targetWhatsNew,
+              });
+            } else {
+              setUpdateGuard(null);
+            }
           } else {
             setUpdateGuard(null);
           }
@@ -3055,7 +3065,12 @@ export default function App() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setUpdateGuard(prev => prev ? { ...prev, showOptionalBanner: false } : null)}
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && updateGuard?.latestVersion) {
+                      localStorage.setItem('jam_dismissed_update_version', updateGuard.latestVersion);
+                    }
+                    setUpdateGuard(null);
+                  }}
                   className="text-gray-400 hover:text-white text-xs font-bold bg-white/10 p-1.5 rounded-full cursor-pointer"
                 >
                   ✕
@@ -3071,19 +3086,30 @@ export default function App() {
 
               <div className="flex items-center justify-end gap-2.5 pt-1 border-t border-white/5">
                 <button
-                  onClick={() => setUpdateGuard(prev => prev ? { ...prev, showOptionalBanner: false } : null)}
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && updateGuard?.latestVersion) {
+                      localStorage.setItem('jam_dismissed_update_version', updateGuard.latestVersion);
+                    }
+                    setUpdateGuard(null);
+                  }}
                   className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-white transition-all cursor-pointer"
                 >
                   تجاهل الآن
                 </button>
                 <button
                   onClick={() => {
+                    if (typeof window !== 'undefined' && updateGuard?.latestVersion) {
+                      localStorage.setItem('jam_installed_update_version', updateGuard.latestVersion);
+                      localStorage.setItem('jam_dismissed_update_version', updateGuard.latestVersion);
+                    }
+                    const versionToInstall = updateGuard.latestVersion;
+                    setUpdateGuard(null);
                     liveHotFixEngine.triggerSeamlessReload({
                       patchId: 'user_ota_install',
-                      version: updateGuard.latestVersion,
+                      version: versionToInstall,
                       timestamp: new Date().toISOString(),
                       title: 'تطبيق التحديث المباشر',
-                      description: updateGuard.whatsNew || '',
+                      description: updateGuard?.whatsNew || '',
                       isMandatory: false,
                       active: true,
                       forceReload: true

@@ -45,10 +45,10 @@ jobs:
         with:
           node-version: 20
 
-      - name: ☕ Setup Java JDK 17
+      - name: ☕ Setup Java JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: 📦 Clean Install Dependencies
@@ -192,12 +192,34 @@ jobs:
           android.suppressUnsupportedCompileSdk=34
           EOF
 
-          # Force BouncyCastle to 1.78.1 to eliminate Java 21 class major version 65 crash
+          # Global Gradle init script: forces BouncyCastle 1.78.1 on every single configuration and buildscript
+          mkdir -p ~/.gradle/init.d
+          cat << 'EOF' > ~/.gradle/init.d/bouncycastle.gradle
+          allprojects {
+              buildscript {
+                  configurations.all {
+                      resolutionStrategy {
+                          force 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+                          force 'org.bouncycastle:bcpkix-jdk18on:1.78.1'
+                      }
+                  }
+              }
+              configurations.all {
+                  resolutionStrategy {
+                      force 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+                      force 'org.bouncycastle:bcpkix-jdk18on:1.78.1'
+                  }
+              }
+          }
+          EOF
+
+          # Inject BouncyCastle 1.78.1 directly into android buildscripts
           node -e "
           const fs = require('fs');
           const rootGradle = 'android/build.gradle';
           if (fs.existsSync(rootGradle)) {
             let content = fs.readFileSync(rootGradle, 'utf8');
+            content = 'buildscript {\n    configurations.all {\n        resolutionStrategy {\n            force \"org.bouncycastle:bcprov-jdk18on:1.78.1\"\n            force \"org.bouncycastle:bcpkix-jdk18on:1.78.1\"\n        }\n    }\n}\n' + content;
             content += '\nallprojects {\n    configurations.all {\n        resolutionStrategy {\n            force \"org.bouncycastle:bcprov-jdk18on:1.78.1\"\n            force \"org.bouncycastle:bcpkix-jdk18on:1.78.1\"\n        }\n    }\n}\n';
             fs.writeFileSync(rootGradle, content, 'utf8');
             console.log('✅ Injected BouncyCastle 1.78.1 lock into android/build.gradle');
@@ -215,6 +237,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
+          ./gradlew wrapper --gradle-version 8.11.1 --distribution-type bin || true
           ./gradlew assembleRelease --no-daemon --stacktrace || ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: 🔑 Generate Unified Release Keystore

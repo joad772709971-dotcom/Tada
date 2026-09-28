@@ -394,6 +394,23 @@ class LiveHotFixEngineClass {
   public scheduleIdleUpdatePrompt(patch: HotFixPatchPayload): void {
     if (typeof window === 'undefined') return;
 
+    // Check if patch or version is already applied, installed or dismissed
+    try {
+      const lastApplied = localStorage.getItem('jam_last_applied_patch_id');
+      const installedVer = localStorage.getItem('jam_installed_update_version');
+      const dismissedVer = localStorage.getItem('jam_dismissed_update_version');
+      const postponed = localStorage.getItem(`jam_postponed_patch_${patch.patchId}`);
+
+      if (
+        lastApplied === patch.patchId || 
+        installedVer === patch.version || 
+        dismissedVer === patch.version || 
+        postponed === 'true'
+      ) {
+        return;
+      }
+    } catch (e) {}
+
     if (this.idleCheckInterval) {
       clearInterval(this.idleCheckInterval);
       this.idleCheckInterval = null;
@@ -489,10 +506,13 @@ class LiveHotFixEngineClass {
     postponeBtn?.addEventListener('click', () => {
       overlay.remove();
       this.isApprovalModalOpen = false;
-      console.log('⚡ [LiveHotFixEngine] User postponed update. Will re-check on next idle interval.');
-      setTimeout(() => {
-        this.scheduleIdleUpdatePrompt(patch);
-      }, 10 * 60 * 1000);
+      try {
+        localStorage.setItem(`jam_postponed_patch_${patch.patchId}`, 'true');
+        if (patch.version) {
+          localStorage.setItem('jam_dismissed_update_version', patch.version);
+        }
+      } catch (e) {}
+      console.log('⚡ [LiveHotFixEngine] User postponed update. Saved preference to avoid repeating alert.');
     });
   }
 
@@ -504,6 +524,10 @@ class LiveHotFixEngineClass {
 
     localStorage.setItem('jam_last_applied_patch_id', patch.patchId);
     localStorage.setItem('jam_last_applied_patch_time', patch.timestamp || new Date().toISOString());
+    if (patch.version) {
+      localStorage.setItem('jam_installed_update_version', patch.version);
+      localStorage.setItem('jam_dismissed_update_version', patch.version);
+    }
     localStorage.removeItem('jam_pending_ota_patch');
 
     try {

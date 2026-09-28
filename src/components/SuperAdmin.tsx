@@ -6597,7 +6597,18 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
       ) : normalizedActiveTab === 'search-purge' ? (
         <UniversalDeepSearchPurge />
       ) : normalizedActiveTab === 'quota-monitor' ? (
-        <QuotaOperationsMonitor isEmbeddedInSuperAdmin={true} shops={shops} users={users} />
+        <QuotaOperationsMonitor 
+          isEmbeddedInSuperAdmin={true} 
+          shops={shops} 
+          users={users} 
+          currentUserEmail={profile?.email || 'a777503191@gmail.com'}
+          onUsersPurged={() => {
+            setUsers(prev => prev.filter(u => (u.email || '').toLowerCase() === 'a777503191@gmail.com' || u.uid === 'master-a777503191'));
+            setShops([]);
+            InstantCacheService.remove('superadmin_users');
+            InstantCacheService.remove('superadmin_shops');
+          }}
+        />
       ) : null}
 
       <AnimatePresence>

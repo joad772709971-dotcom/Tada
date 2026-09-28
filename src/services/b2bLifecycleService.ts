@@ -246,7 +246,8 @@ export const b2bLifecycleService = {
 
     const config = routingConfig || (() => {
       try {
-        const saved = localStorage.getItem('jam_order_routing_config_v1');
+        const saved = (shopOwnerId ? localStorage.getItem(`jam_order_routing_config_${shopOwnerId}`) : null) || 
+                      localStorage.getItem('jam_order_routing_config_v1');
         return saved ? JSON.parse(saved) : {};
       } catch (e) {
         return {};

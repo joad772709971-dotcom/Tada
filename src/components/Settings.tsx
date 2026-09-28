@@ -8,8 +8,9 @@ import { Image as ImageIcon, Download, Upload, Database, ShieldCheck, AlertCircl
   Globe, Shield, Activity, Monitor, Volume2, Coins, Smartphone, Share2, Copy, QrCode, X, Key, Tag,
   Send, Package, ChevronDown, Check, Calendar, TrendingDown, Box, Calculator as CalculatorIcon,
   Store, SearchCode, PlusSquare, Zap, ShoppingBasket, Wrench, BarChart3, CreditCard, Users, Truck, Archive, Gavel, FileText,
-  ScanLine, Layout, Briefcase, Link2, Link2Off, Cpu, Network
+  ScanLine, Layout, Briefcase, Link2, Link2Off, Cpu, Network, GitFork
 } from 'lucide-react';
+import OrderRoutingControlPanel from './OrderRoutingControlPanel';
 import { collection, getDocs, doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp, writeBatch, query, limit, where, onSnapshot, addDoc, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { motion, AnimatePresence } from 'motion/react';
@@ -1985,6 +1986,7 @@ export default function Settings({ profile }: SettingsProps) {
 
         {[
           { id: 'general', label: 'الهوية والنشاط', icon: LayoutDashboard },
+          { id: 'order_routing', label: 'مسارات الطلب والخصومات والبدائل', icon: GitFork },
           { id: 'network-sync', label: 'المزامنة والربط الشبكي', icon: Network },
           { id: 'pricing', label: 'قواعد التسعير', icon: CalculatorIcon },
           { id: 'notifications', label: 'التنبيهات والرسائل', icon: Bell },
@@ -2455,6 +2457,21 @@ export default function Settings({ profile }: SettingsProps) {
                 {isSaving ? 'جاري الحفظ...' : 'حفظ بيانات المحل'}
               </button>
             </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'order_routing' && (
+          <motion.div 
+            key="order_routing"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="space-y-6"
+          >
+            <OrderRoutingControlPanel 
+              initialShopId={profile?.ownerId || profile?.storeId || profile?.uid}
+              initialShopName={shopSettings.shopName || profile?.shopName || profile?.name}
+            />
           </motion.div>
         )}
 

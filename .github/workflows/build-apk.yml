@@ -188,7 +188,28 @@ jobs:
           org.gradle.parallel=true
           android.useAndroidX=true
           android.enableJetifier=true
+          android.overridePathCheck=true
+          android.suppressUnsupportedCompileSdk=34
           EOF
+
+          # Force BouncyCastle to 1.78.1 to eliminate Java 21 class major version 65 crash
+          node -e "
+          const fs = require('fs');
+          const rootGradle = 'android/build.gradle';
+          if (fs.existsSync(rootGradle)) {
+            let content = fs.readFileSync(rootGradle, 'utf8');
+            content += '\nallprojects {\n    configurations.all {\n        resolutionStrategy {\n            force \"org.bouncycastle:bcprov-jdk18on:1.78.1\"\n            force \"org.bouncycastle:bcpkix-jdk18on:1.78.1\"\n        }\n    }\n}\n';
+            fs.writeFileSync(rootGradle, content, 'utf8');
+            console.log('✅ Injected BouncyCastle 1.78.1 lock into android/build.gradle');
+          }
+          const appGradle = 'android/app/build.gradle';
+          if (fs.existsSync(appGradle)) {
+            let content = fs.readFileSync(appGradle, 'utf8');
+            content += '\nconfigurations.all {\n    resolutionStrategy {\n        force \"org.bouncycastle:bcprov-jdk18on:1.78.1\"\n        force \"org.bouncycastle:bcpkix-jdk18on:1.78.1\"\n    }\n}\n';
+            fs.writeFileSync(appGradle, content, 'utf8');
+            console.log('✅ Injected BouncyCastle 1.78.1 lock into android/app/build.gradle');
+          }
+          "
 
       - name: 🔨 Compile Release APK
         run: |

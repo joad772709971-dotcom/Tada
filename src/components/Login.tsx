@@ -206,11 +206,6 @@ export default function Login({
                 <User className="w-4.5 h-4.5 text-cyan-400" />
                 <span>اسم المستخدم أو رقم الهاتف:</span>
               </span>
-              {activeField === 'username' && (
-                <span className="text-[10px] text-cyan-400 font-bold bg-cyan-500/10 px-2.5 py-0.5 rounded-full border border-cyan-500/30 animate-pulse">
-                  ● جاري الكتابة
-                </span>
-              )}
             </label>
             <div className={`relative rounded-2xl bg-slate-950/90 border transition-all shadow-inner ${
               activeField === 'username' 
@@ -241,11 +236,6 @@ export default function Login({
                 <Lock className="w-4.5 h-4.5 text-cyan-400" />
                 <span>كلمة المرور المشفرة:</span>
               </span>
-              {activeField === 'password' && (
-                <span className="text-[10px] text-cyan-400 font-bold bg-cyan-500/10 px-2.5 py-0.5 rounded-full border border-cyan-500/30 animate-pulse">
-                  ● جاري الكتابة
-                </span>
-              )}
             </label>
             <div className={`relative rounded-2xl bg-slate-950/90 border transition-all shadow-inner ${
               activeField === 'password' 

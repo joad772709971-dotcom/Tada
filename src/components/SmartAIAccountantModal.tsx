@@ -22,9 +22,6 @@ import SmartAIIntelligenceHub from './smart_accountant/SmartAIIntelligenceHub';
 import SmartAIQuickActionsBar from './smart_accountant/SmartAIQuickActionsBar';
 import SmartAIInstructionsSection from './smart_accountant/SmartAIInstructionsSection';
 import { SmartInvoiceOCRModal } from './accounting/SmartInvoiceOCRModal';
-import { TelecomPDFStatementEngine } from './accounting/TelecomPDFStatementEngine';
-import { PackagePricingCatalogModal } from './accounting/PackagePricingCatalogModal';
-import { CustomerDebtLinkModal } from './accounting/CustomerDebtLinkModal';
 
 interface SmartAIAccountantModalProps {
   isOpen: boolean;
@@ -223,7 +220,7 @@ export default function SmartAIAccountantModal({
 
   // History state
   const [history, setHistory] = useState<Array<{ text: string; result: SmartAccountingResponse; timestamp: Date; ref?: string; reversed?: boolean }>>([]);
-  const [activeMainTab, setActiveMainTab] = useState<'chat' | 'instructions' | 'daily_editor' | 'intelligence' | 'invoice_ocr' | 'telecom_pdf' | 'packages_catalog'>('chat');
+  const [activeMainTab, setActiveMainTab] = useState<'chat' | 'instructions' | 'daily_editor' | 'intelligence' | 'invoice_ocr'>('chat');
   const [isCustomerDebtModalOpen, setIsCustomerDebtModalOpen] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -961,9 +958,7 @@ export default function SmartAIAccountantModal({
     { id: 'instructions', label: 'دليل وتعليمات الاستخدام', icon: HelpCircle, badge: 'تعليمات', color: 'text-amber-400' },
     { id: 'daily_editor', label: 'اليومية وسجل القيود', icon: Calendar, color: 'text-amber-400' },
     { id: 'intelligence', label: 'ذكاء الأعمال والنواقص', icon: Zap, color: 'text-emerald-400' },
-    { id: 'invoice_ocr', label: 'فواتير المشتريات (OCR)', icon: FileText, color: 'text-cyan-400' },
-    { id: 'telecom_pdf', label: 'كشوفات السداد و PDF', icon: Smartphone, color: 'text-purple-400' },
-    { id: 'packages_catalog', label: 'تسعير الباقات', icon: DollarSign, color: 'text-teal-400' }
+    { id: 'invoice_ocr', label: 'فواتير المشتريات (OCR)', icon: FileText, color: 'text-cyan-400' }
   ];
 
   if (!isOpen) return null;
@@ -1135,8 +1130,6 @@ export default function SmartAIAccountantModal({
                   {activeMainTab === 'daily_editor' && 'سجل اليومية ومراجعة العمليات السابقة'}
                   {activeMainTab === 'intelligence' && 'مؤشرات ذكاء الأعمال، فحص السيولة، والنواقص'}
                   {activeMainTab === 'invoice_ocr' && 'مسح وتدقيق فواتير التوريد تلقائياً'}
-                  {activeMainTab === 'telecom_pdf' && 'مطابقة كشوفات السداد وباقات الاتصالات'}
-                  {activeMainTab === 'packages_catalog' && 'دليل أسعار باقات الشحن والخدمات'}
                 </span>
               </div>
             </div>
@@ -1329,23 +1322,6 @@ export default function SmartAIAccountantModal({
                 setInputText(`تم اعتماد فاتورة مشتريات من المورد (${inv.supplierName}) بإجمالي ${inv.totalAmount.toLocaleString()} ر.ي`);
                 if (onEntryPosted) onEntryPosted();
               }}
-              storeId={storeCode}
-              ownerId={ownerId}
-            />
-          ) : activeMainTab === 'telecom_pdf' ? (
-            <TelecomPDFStatementEngine
-              isOpen={true}
-              onClose={() => setActiveMainTab('chat')}
-              storeId={storeCode}
-              ownerId={ownerId}
-              onDebtLinked={(res) => {
-                if (onEntryPosted) onEntryPosted();
-              }}
-            />
-          ) : activeMainTab === 'packages_catalog' ? (
-            <PackagePricingCatalogModal
-              isOpen={true}
-              onClose={() => setActiveMainTab('chat')}
               storeId={storeCode}
               ownerId={ownerId}
             />
@@ -1548,8 +1524,6 @@ export default function SmartAIAccountantModal({
                   }
                 }}
                 onOpenOCR={() => setActiveMainTab('invoice_ocr')}
-                onOpenTelecom={() => setActiveMainTab('telecom_pdf')}
-                onOpenCatalog={() => setActiveMainTab('packages_catalog')}
               />
 
               {/* OPERATION TYPE SELECTOR BUTTONS (موجزة ومختصرة للعمل السريع) */}

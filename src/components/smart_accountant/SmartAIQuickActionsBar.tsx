@@ -15,8 +15,6 @@ interface SmartAIQuickActionsBarProps {
   suggestedMatch?: { originalText: string; matchedName: string; type: string } | null;
   onApplySuggestion?: (matchedName: string) => void;
   onOpenOCR?: () => void;
-  onOpenTelecom?: () => void;
-  onOpenCatalog?: () => void;
 }
 
 export const SmartAIQuickActionsBar: React.FC<SmartAIQuickActionsBarProps> = ({
@@ -27,9 +25,7 @@ export const SmartAIQuickActionsBar: React.FC<SmartAIQuickActionsBarProps> = ({
   onToggleMode,
   suggestedMatch,
   onApplySuggestion,
-  onOpenOCR,
-  onOpenTelecom,
-  onOpenCatalog
+  onOpenOCR
 }) => {
   const [activeFlyout, setActiveFlyout] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -171,17 +167,6 @@ export const SmartAIQuickActionsBar: React.FC<SmartAIQuickActionsBarProps> = ({
             >
               <FileText size={13} />
               <span>OCR</span>
-            </button>
-          )}
-          {onOpenTelecom && (
-            <button
-              type="button"
-              onClick={onOpenTelecom}
-              className="px-2 py-1 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 text-xs font-bold flex items-center gap-1"
-              title="كشوفات السداد و PDF"
-            >
-              <Signal size={13} />
-              <span>سداد</span>
             </button>
           )}
         </div>

@@ -100,23 +100,41 @@ jobs:
             console.log('✅ Updated app_name to: ${{ matrix.variant.name_ar }}');
           }
 
-          // 2. Set Incremental VersionCode & VersionName in build.gradle
+          // 2. Set MinSdkVersion to 24 in variables.gradle
+          const varPath = 'android/variables.gradle';
+          if (fs.existsSync(varPath)) {
+            let varContent = fs.readFileSync(varPath, 'utf8');
+            varContent = varContent.replace(/minSdkVersion\s*=\s*\d+/g, 'minSdkVersion = 24');
+            varContent = varContent.replace(/compileSdkVersion\s*=\s*\d+/g, 'compileSdkVersion = 34');
+            varContent = varContent.replace(/targetSdkVersion\s*=\s*\d+/g, 'targetSdkVersion = 34');
+            fs.writeFileSync(varPath, varContent, 'utf8');
+            console.log('✅ Injected minSdkVersion = 24, compileSdkVersion = 34 in variables.gradle');
+          }
+
+          // 3. Set Incremental VersionCode & VersionName in build.gradle & enforce minSdk 24
           const gradlePath = 'android/app/build.gradle';
           if (fs.existsSync(gradlePath)) {
             let gradle = fs.readFileSync(gradlePath, 'utf8');
             const runNum = parseInt('${{ github.run_number }}', 10) || 1;
             const newVersionCode = 2800 + runNum;
             gradle = gradle.replace(/versionCode \d+/, 'versionCode ' + newVersionCode);
-            gradle = gradle.replace(/versionName \"[^\"]+\"/, 'versionName \"3.0.2\"');
+            gradle = gradle.replace(/versionName \"[^\"]+\"/, 'versionName \"4.0.1\"');
+            gradle = gradle.replace(/minSdkVersion\s+rootProject\.ext\.minSdkVersion/, 'minSdkVersion 24');
+            gradle = gradle.replace(/minSdkVersion\s+\d+/, 'minSdkVersion 24');
             fs.writeFileSync(gradlePath, gradle, 'utf8');
-            console.log('✅ Injected versionCode: ' + newVersionCode + ', versionName: 3.0.2');
+            console.log('✅ Injected versionCode: ' + newVersionCode + ', versionName: 4.0.1, minSdkVersion: 24');
           }
 
-          // 3. Inject Permissions & Security in AndroidManifest.xml cleanly (No Duplicate Attributes)
+          // 4. Inject Permissions & Security in AndroidManifest.xml cleanly (with xmlns:tools and overrideLibrary)
           const manifestPath = 'android/app/src/main/AndroidManifest.xml';
           if (fs.existsSync(manifestPath)) {
             let manifest = fs.readFileSync(manifestPath, 'utf8');
             
+            // Ensure xmlns:tools is present on <manifest>
+            if (!manifest.includes('xmlns:tools=')) {
+              manifest = manifest.replace('<manifest', '<manifest xmlns:tools=\"http://schemas.android.com/tools\"');
+            }
+
             // Fix attributes on <application> tag safely
             manifest = manifest.replace(/android:allowBackup=\"[^\"]*\"/g, 'android:allowBackup=\"false\"');
             manifest = manifest.replace(/android:debuggable=\"[^\"]*\"/g, '');
@@ -129,6 +147,11 @@ jobs:
             }
             if (!manifest.includes('android:windowSoftInputMode')) {
               manifest = manifest.replace('<activity', '<activity android:windowSoftInputMode=\"adjustResize\"');
+            }
+
+            // Override sqlcipher library minSdk restriction
+            if (!manifest.includes('tools:overrideLibrary=\"net.zetetic.database\"')) {
+              manifest = manifest.replace('<application', '    <uses-sdk tools:overrideLibrary=\"net.zetetic.database\" />\n    <application');
             }
 
             // Permissions to ensure all hardware features (Bluetooth, Camera, Audio, Network) work

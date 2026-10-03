@@ -396,6 +396,11 @@ class LiveHotFixEngineClass {
 
     // Check if patch or version is already applied, installed or dismissed
     try {
+      const otaSnoozedUntil = parseInt(localStorage.getItem('jam_ota_snooze_until') || '0', 10);
+      if (Date.now() < otaSnoozedUntil) {
+        return;
+      }
+
       const lastApplied = localStorage.getItem('jam_last_applied_patch_id');
       const installedVer = localStorage.getItem('jam_installed_update_version');
       const dismissedVer = localStorage.getItem('jam_dismissed_update_version');
@@ -403,8 +408,8 @@ class LiveHotFixEngineClass {
 
       if (
         lastApplied === patch.patchId || 
-        installedVer === patch.version || 
-        dismissedVer === patch.version || 
+        (patch.version && installedVer === patch.version) || 
+        (patch.version && dismissedVer === patch.version) || 
         postponed === 'true'
       ) {
         return;
@@ -476,12 +481,17 @@ class LiveHotFixEngineClass {
           <span style="color:#38bdf8;font-weight:bold;">الإصدار المحدث:</span> v${patch.version || '3.0.1'} | ${patch.title || 'تحسينات وإضافات فورية'}
         </div>
 
-        <div style="display:flex;gap:10px;">
-          <button id="jam-ota-confirm-btn" style="flex:1;background:linear-gradient(135deg,#10b981,#059669);color:#022c22;border:none;padding:12px 16px;border-radius:14px;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 4px 12px rgba(16,185,129,0.25);">
-            ✅ موافقة وتثبيت الآن
-          </button>
-          <button id="jam-ota-postpone-btn" style="flex:1;background:rgba(255,255,255,0.08);color:#94a3b8;border:1px solid rgba(255,255,255,0.1);padding:12px 16px;border-radius:14px;font-size:13px;font-weight:700;cursor:pointer;">
-            ⏳ لاحقاً (متابعة العمل)
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;gap:8px;">
+            <button id="jam-ota-confirm-btn" style="flex:1;background:linear-gradient(135deg,#10b981,#059669);color:#022c22;border:none;padding:12px 14px;border-radius:14px;font-size:12px;font-weight:900;cursor:pointer;box-shadow:0 4px 12px rgba(16,185,129,0.25);">
+              ✅ موافقة وتثبيت الآن
+            </button>
+            <button id="jam-ota-postpone-btn" style="flex:1;background:rgba(255,255,255,0.08);color:#94a3b8;border:1px solid rgba(255,255,255,0.1);padding:12px 14px;border-radius:14px;font-size:12px;font-weight:700;cursor:pointer;">
+              ⏳ لاحقاً (تذكير بعد 7 أيام)
+            </button>
+          </div>
+          <button id="jam-ota-already-installed-btn" style="width:100%;background:rgba(16,185,129,0.1);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:10px 14px;border-radius:12px;font-size:11px;font-weight:bold;cursor:pointer;">
+            ✓ تم تثبيت التحديث بالفعل (عدم التنبيه مجدداً)
           </button>
         </div>
       </div>
@@ -491,6 +501,7 @@ class LiveHotFixEngineClass {
 
     const confirmBtn = document.getElementById('jam-ota-confirm-btn');
     const postponeBtn = document.getElementById('jam-ota-postpone-btn');
+    const alreadyBtn = document.getElementById('jam-ota-already-installed-btn');
 
     confirmBtn?.addEventListener('click', () => {
       if (confirmBtn) {
@@ -508,11 +519,26 @@ class LiveHotFixEngineClass {
       this.isApprovalModalOpen = false;
       try {
         localStorage.setItem(`jam_postponed_patch_${patch.patchId}`, 'true');
-        if (patch.version) {
-          localStorage.setItem('jam_dismissed_update_version', patch.version);
-        }
+        const ver = patch.version || '4.0.1';
+        localStorage.setItem('jam_dismissed_update_version', ver);
+        localStorage.setItem('jam_ota_snooze_until', (Date.now() + 7 * 24 * 3600 * 1000).toString());
       } catch (e) {}
-      console.log('⚡ [LiveHotFixEngine] User postponed update. Saved preference to avoid repeating alert.');
+      console.log('⚡ [LiveHotFixEngine] User postponed update for 7 days. Saved preference.');
+    });
+
+    alreadyBtn?.addEventListener('click', () => {
+      overlay.remove();
+      this.isApprovalModalOpen = false;
+      try {
+        localStorage.setItem(`jam_postponed_patch_${patch.patchId}`, 'true');
+        localStorage.setItem('jam_last_applied_patch_id', patch.patchId);
+        const ver = patch.version || '4.0.1';
+        localStorage.setItem('jam_installed_update_version', ver);
+        localStorage.setItem('jam_dismissed_update_version', ver);
+        localStorage.setItem('jam_ota_snooze_until', (Date.now() + 30 * 24 * 3600 * 1000).toString());
+        localStorage.removeItem('jam_pending_ota_patch');
+      } catch (e) {}
+      console.log('⚡ [LiveHotFixEngine] User marked update as already installed. Suppressed future alerts.');
     });
   }
 
@@ -522,12 +548,12 @@ class LiveHotFixEngineClass {
   public async performApprovedReload(patch: HotFixPatchPayload): Promise<void> {
     if (typeof window === 'undefined') return;
 
+    const ver = patch.version || '4.0.1';
     localStorage.setItem('jam_last_applied_patch_id', patch.patchId);
+    localStorage.setItem(`jam_postponed_patch_${patch.patchId}`, 'true');
     localStorage.setItem('jam_last_applied_patch_time', patch.timestamp || new Date().toISOString());
-    if (patch.version) {
-      localStorage.setItem('jam_installed_update_version', patch.version);
-      localStorage.setItem('jam_dismissed_update_version', patch.version);
-    }
+    localStorage.setItem('jam_installed_update_version', ver);
+    localStorage.setItem('jam_dismissed_update_version', ver);
     localStorage.removeItem('jam_pending_ota_patch');
 
     try {

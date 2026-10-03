@@ -21,7 +21,7 @@ export interface EnvironmentConfig {
 
 class EnvironmentService {
   private currentEnv: AppEnvironment = 'development';
-  private appVersion = '2.8.8';
+  private appVersion = '4.0.1';
   private minSupportedVersion = '2.0.0';
 
   constructor() {
@@ -98,11 +98,32 @@ class EnvironmentService {
    * Current app build information
    */
   public getVersionInfo() {
+    let resolvedVersion = this.appVersion;
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('jam_installed_update_version') || localStorage.getItem('jam_app_version');
+        if (stored) {
+          const parts1 = stored.split('.').map(n => parseInt(n, 10) || 0);
+          const parts2 = resolvedVersion.split('.').map(n => parseInt(n, 10) || 0);
+          const len = Math.max(parts1.length, parts2.length);
+          let isGreater = false;
+          for (let i = 0; i < len; i++) {
+            const p1 = parts1[i] || 0;
+            const p2 = parts2[i] || 0;
+            if (p1 > p2) { isGreater = true; break; }
+            if (p1 < p2) { break; }
+          }
+          if (isGreater) {
+            resolvedVersion = stored;
+          }
+        }
+      } catch (e) {}
+    }
     return {
-      version: this.appVersion,
+      version: resolvedVersion,
       minSupported: this.minSupportedVersion,
       env: this.currentEnv,
-      buildDate: '2026-07-23',
+      buildDate: '2026-10-03',
     };
   }
 }

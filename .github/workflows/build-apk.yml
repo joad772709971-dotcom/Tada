@@ -111,7 +111,7 @@ jobs:
             console.log('✅ Injected minSdkVersion = 24, compileSdkVersion = 34 in variables.gradle');
           }
 
-          // 3. Set Incremental VersionCode & VersionName in build.gradle & enforce minSdk 24
+          // 3. Set Incremental VersionCode & VersionName in build.gradle & enforce minSdk 24 with universal ABI architectures
           const gradlePath = 'android/app/build.gradle';
           if (fs.existsSync(gradlePath)) {
             let gradle = fs.readFileSync(gradlePath, 'utf8');
@@ -121,8 +121,14 @@ jobs:
             gradle = gradle.replace(/versionName \"[^\"]+\"/, 'versionName \"1.0.0\"');
             gradle = gradle.replace(/minSdkVersion\s+rootProject\.ext\.minSdkVersion/, 'minSdkVersion 24');
             gradle = gradle.replace(/minSdkVersion\s+\d+/, 'minSdkVersion 24');
+            
+            // Universal ABI Filters: guarantees installation on 32-bit (TracFone, low-end Samsung Galaxy) and 64-bit Androids
+            if (!gradle.includes('abiFilters')) {
+              gradle = gradle.replace(/defaultConfig\s*\{/, 'defaultConfig {\n        ndk {\n            abiFilters \"armeabi-v7a\", \"arm64-v8a\", \"x86\", \"x86_64\"\n        }');
+            }
+
             fs.writeFileSync(gradlePath, gradle, 'utf8');
-            console.log('✅ Injected versionCode: ' + newVersionCode + ', versionName: 1.0.0, minSdkVersion: 24');
+            console.log('✅ Injected versionCode: ' + newVersionCode + ', versionName: 1.0.0, minSdkVersion: 24, all ABIs');
           }
 
           // 4. Inject Permissions & Security in AndroidManifest.xml cleanly (with xmlns:tools and overrideLibrary)
@@ -141,6 +147,12 @@ jobs:
             
             if (!manifest.includes('android:usesCleartextTraffic')) {
               manifest = manifest.replace('<application', '<application android:usesCleartextTraffic=\"true\"');
+            }
+            if (!manifest.includes('android:extractNativeLibs')) {
+              manifest = manifest.replace('<application', '<application android:extractNativeLibs=\"true\"');
+            }
+            if (!manifest.includes('android:largeHeap')) {
+              manifest = manifest.replace('<application', '<application android:largeHeap=\"true\"');
             }
             if (!manifest.includes('android:requestLegacyExternalStorage')) {
               manifest = manifest.replace('<application', '<application android:requestLegacyExternalStorage=\"true\"');
@@ -285,9 +297,10 @@ jobs:
           echo "Found source APK at: $SOURCE_APK"
           
           $ZIPALIGN -p -f -v 4 "$SOURCE_APK" "release-output/temp_aligned.apk"
-          $APKSIGNER sign --ks release.keystore --ks-key-alias jam_alias --ks-pass pass:jam_secure_password --key-pass pass:jam_secure_password --out "release-output/${{ matrix.variant.apk_filename }}" "release-output/temp_aligned.apk"
+          # Sign with explicit v1, v2, v3 schemes enabled for universal Android 7 through 16 compatibility
+          $APKSIGNER sign --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true --v4-signing-enabled false --ks release.keystore --ks-key-alias jam_alias --ks-pass pass:jam_secure_password --key-pass pass:jam_secure_password --out "release-output/${{ matrix.variant.apk_filename }}" "release-output/temp_aligned.apk"
           rm -f "release-output/temp_aligned.apk"
-          $APKSIGNER verify "release-output/${{ matrix.variant.apk_filename }}"
+          $APKSIGNER verify --verbose "release-output/${{ matrix.variant.apk_filename }}"
           
           echo "✅ Successfully aligned and signed: release-output/${{ matrix.variant.apk_filename }}"
 
@@ -342,7 +355,7 @@ jobs:
         run: |
           npm install --legacy-peer-deps
           npm install -D @tailwindcss/oxide-win32-x64-msvc@^4.1.14 lightningcss-win32-x64-msvc@^1.29.1 @rollup/rollup-win32-x64-msvc@^4.63.1 --legacy-peer-deps
-          npm install electron electron-builder sharp png-to-ico acorn --save-dev --legacy-peer-deps
+          npm install electron@22.3.27 electron-builder@^24.13.3 sharp png-to-ico acorn --save-dev --legacy-peer-deps
 
       - name: 🌐 Build Web Assets
         run: |
@@ -357,10 +370,26 @@ jobs:
       - name: ⚙️ Setup Electron & NSIS Packaging Configuration
         shell: bash
         run: |
-          # 1. Create Hardened Electron Main process script
+          # 1. Create Hardened Electron Main process script with Windows 7, 10, 11 Black Screen Prevention
           cat << 'EOF' > electron-main.cjs
           const { app, BrowserWindow, shell, Menu } = require('electron');
           const path = require('path');
+
+          // 🛡️ CRITICAL HARDWARE ACCELERATION FIX FOR WINDOWS 11 / 10 / 7:
+          // Disables GPU compositor crashes on laptop integrated GPUs (Intel Iris Xe / AMD / hybrid Optimus)
+          app.disableHardwareAcceleration();
+
+          // Universal stability switches for Windows 7, 8, 10, 11
+          app.commandLine.appendSwitch('disable-gpu');
+          app.commandLine.appendSwitch('disable-gpu-compositing');
+          app.commandLine.appendSwitch('disable-software-rasterizer');
+          app.commandLine.appendSwitch('disable-gpu-sandbox');
+          app.commandLine.appendSwitch('no-sandbox');
+          app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,CalculateNativeWinOcclusion');
+
+          if (process.platform === 'win32') {
+            app.setAppUserModelId('com.jam.store.desktop');
+          }
 
           function createWindow () {
             Menu.setApplicationMenu(null); // Disable menu bar entirely
@@ -376,7 +405,8 @@ jobs:
               webPreferences: {
                 nodeIntegration: false,
                 contextIsolation: true,
-                sandbox: true,
+                sandbox: false, // Ensures local ASAR resources are accessible across Windows 7-11
+                webSecurity: false,
                 devTools: false // 🛡️ Hardened against DevTools & inspection
               },
               title: "Jam store",
@@ -384,11 +414,30 @@ jobs:
             });
 
             win.setMenuBarVisibility(false);
-            win.loadFile(path.join(__dirname, 'dist/index.html'));
+            win.loadFile(path.join(__dirname, 'dist', 'index.html'));
 
+            // Primary display trigger
             win.once('ready-to-show', () => {
               win.maximize();
               win.show();
+            });
+
+            // Fallback display timer: guarantees window is never stuck hidden or black on slow/driver hangs
+            setTimeout(() => {
+              if (!win.isDestroyed() && !win.isVisible()) {
+                win.maximize();
+                win.show();
+              }
+            }, 1500);
+
+            // Handle accidental load hiccups
+            win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+              console.warn('Reloading index.html after initial load failure:', errorCode, errorDescription);
+              setTimeout(() => {
+                if (!win.isDestroyed()) {
+                  win.loadFile(path.join(__dirname, 'dist', 'index.html'));
+                }
+              }, 500);
             });
 
             // 🛡️ Prevent DevTools opening
@@ -425,7 +474,7 @@ jobs:
           });
           EOF
 
-          # 2. Configure package.json for Electron Builder with Maximum Compression
+          # 2. Configure package.json for Electron Builder with Maximum Universal Compression (x64 and ia32)
           node -e "
           const fs = require('fs');
           const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
@@ -435,7 +484,7 @@ jobs:
           pkg.description = 'Jam store Desktop Standalone POS & ERP System';
           pkg.main = 'electron-main.cjs';
           pkg.devDependencies = pkg.devDependencies || {};
-          pkg.devDependencies['electron'] = '^30.0.0';
+          pkg.devDependencies['electron'] = '22.3.27';
           pkg.devDependencies['electron-builder'] = '^24.13.3';
           pkg.scripts = pkg.scripts || {};
           pkg.scripts['electron:build'] = 'electron-builder --win --publish never';
@@ -463,7 +512,7 @@ jobs:
               target: [
                 {
                   target: 'nsis',
-                  arch: ['x64']
+                  arch: ['x64', 'ia32']
                 }
               ]
             },

@@ -52,7 +52,7 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       sourcemap: false,
       minify: 'esbuild',
-      target: 'esnext',
+      target: ['es2020', 'chrome80', 'edge80', 'firefox78', 'safari14'],
       rollupOptions: {
         maxParallelFileOps: 1,
         cache: false,

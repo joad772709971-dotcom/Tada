@@ -170,7 +170,8 @@ service cloud.firestore {
     // 9. ارتباطات B2B القديمة والمفاتيح المتبادلة
     match /shops/{shopId} {
       allow create: if isAuthenticated() || isSuperAdmin();
-      allow read, update, delete: if isSuperAdmin() || canAccessStore(shopId);
+      allow read: if isAuthenticated() || isSuperAdmin() || canAccessStore(shopId);
+      allow update, delete: if isSuperAdmin() || canAccessStore(shopId);
 
       match /{subcollection}/{docId} {
         allow read, write: if isSuperAdmin() || canAccessStore(shopId);

@@ -68,6 +68,35 @@ export class InstantCacheService {
   }
 
   /**
+   * حذف مفتاح محدد من الذاكرة المؤقتة والتخزين المحلي
+   */
+  public static remove(key: string): void {
+    memoryStore.delete(key);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem(`jam_cache_${key}`);
+      }
+    } catch (e) {}
+  }
+
+  /**
+   * مسح وتطهير كافة البيانات المخزنة مؤقتاً للتأكد من المزامنة الفريش
+   */
+  public static clearAll(): void {
+    memoryStore.clear();
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const keys = Object.keys(localStorage);
+        for (const k of keys) {
+          if (k.startsWith('jam_cache_')) {
+            localStorage.removeItem(k);
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  /**
    * ربط استعلام Firestore مع الاستجابة الفورية
    * يعيد إلغاء الاشتراك (Unsubscribe)
    */

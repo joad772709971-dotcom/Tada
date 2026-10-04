@@ -1823,13 +1823,19 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
       setGlobalAlerts(cachedMaster.globalAlerts || []);
     }
 
-    const qShops = query(collection(db, 'shops'), orderBy('createdAt', 'desc'));
-    const unsubShops = onSnapshot(qShops, (snapshot) => {
-      const shopList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const unsubShops = onSnapshot(collection(db, 'shops'), (snapshot) => {
+      const shopList = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter((s: any) => !s.isDeleted && s.status !== 'deleted')
+        .sort((a: any, b: any) => {
+          const tA = a.createdAt?.seconds || (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+          const tB = b.createdAt?.seconds || (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+          return tB - tA;
+        });
       InstantCacheService.set('superadmin_shops', shopList);
       setShops(shopList);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'shops');
+      console.warn("Notice fetching shops in SuperAdmin:", error?.message || error);
     });
 
     const qUsers = query(collection(db, 'users'));

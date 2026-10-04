@@ -11,6 +11,7 @@
  */
 
 import { db } from '../firebase';
+import { InstantCacheService } from './instantCacheService';
 import { 
   collection, 
   doc, 
@@ -213,6 +214,14 @@ export async function safeDeleteShop(options: DeleteShopOptions): Promise<{ succ
           await deleteDoc(doc(db, t.col, t.id));
         } catch (e) {}
       }
+    }
+
+    // Clear local instant cache to prevent ghost stores from appearing
+    InstantCacheService.remove('superadmin_shops');
+    InstantCacheService.remove('superadmin_users');
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem('jam_cache_superadmin_shops');
+      localStorage.removeItem('jam_cache_superadmin_users');
     }
 
     return {

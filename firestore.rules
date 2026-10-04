@@ -67,7 +67,8 @@ service cloud.firestore {
     // 3. معمارية المتاجر المعزولة الحديثة (Multi-Tenant Store Isolation)
     // يمنع استعلام أو قراءة بيانات المتجر إلا للمالك أو الموظف المسجل داخل stores/{storeId}/employees أو عبر store_links سارية
     match /stores/{storeId} {
-      allow read, write: if canAccessStore(storeId);
+      allow create: if isAuthenticated() || isSuperAdmin();
+      allow read, update, delete: if canAccessStore(storeId);
 
       // حصر كافة الفواتير، المخزون، الزبائن، المبيعات، والديون داخل المتجر المعني حصراً
       match /invoices/{invoiceId} {
@@ -118,7 +119,8 @@ service cloud.firestore {
     }
 
     match /store_db_registry/{storeId} {
-      allow read, write: if canAccessStore(storeId);
+      allow create: if isAuthenticated() || isSuperAdmin();
+      allow read, update, delete: if canAccessStore(storeId);
     }
 
     match /settings/{settingId} {
@@ -128,18 +130,20 @@ service cloud.firestore {
 
     match /b2bStoreProfiles/{profileId} {
       allow read: if true;
-      allow write: if canAccessStore(profileId);
+      allow create: if isAuthenticated() || isSuperAdmin();
+      allow update, delete: if canAccessStore(profileId);
     }
 
     // 5. ملفات المستخدمين الموحدة (Unified Users Identity Registry)
     // تقييد صارم: كل مستخدم يقرأ ويعدل بياناته الخاصة فقط (إضافة للأدمن المشرف العام)
     match /users/{userId} {
+      allow create: if isAuthenticated() || isSuperAdmin();
       allow read: if isSuperAdmin() || (isAuthenticated() && (
         request.auth.uid == userId ||
         request.auth.token.phone == userId ||
         (request.auth.token.email != null && request.auth.token.email.split('@')[0] == userId)
       ));
-      allow write: if isSuperAdmin() || (isAuthenticated() && (
+      allow update, delete: if isSuperAdmin() || (isAuthenticated() && (
         request.auth.uid == userId ||
         request.auth.token.phone == userId ||
         (request.auth.token.email != null && request.auth.token.email.split('@')[0] == userId)
@@ -165,11 +169,11 @@ service cloud.firestore {
 
     // 9. ارتباطات B2B القديمة والمفاتيح المتبادلة
     match /shops/{shopId} {
-      allow read: if canAccessStore(shopId);
-      allow write: if canAccessStore(shopId);
+      allow create: if isAuthenticated() || isSuperAdmin();
+      allow read, update, delete: if isSuperAdmin() || canAccessStore(shopId);
 
       match /{subcollection}/{docId} {
-        allow read, write: if canAccessStore(shopId);
+        allow read, write: if isSuperAdmin() || canAccessStore(shopId);
       }
     }
 

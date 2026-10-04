@@ -27,7 +27,8 @@ import {
   Send,
   Layers,
   Award,
-  Lock
+  Lock,
+  CheckCircle2
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';

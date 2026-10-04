@@ -74,7 +74,7 @@ export default function AppVersionEnforcerModal() {
   const handleMarkAsInstalled = () => {
     if (typeof window !== 'undefined' && versionStatus) {
       try {
-        const targetVer = versionStatus.latestVersion || '4.0.1';
+        const targetVer = versionStatus.latestVersion || '1.0.0';
         localStorage.setItem('jam_installed_update_version', targetVer);
         localStorage.setItem('jam_dismissed_update_version', targetVer);
         localStorage.removeItem('jam_snoozed_update_until');
@@ -87,7 +87,7 @@ export default function AppVersionEnforcerModal() {
   const handleSnooze = (days: number = 7) => {
     if (typeof window !== 'undefined' && versionStatus) {
       try {
-        const targetVer = versionStatus.latestVersion || '4.0.1';
+        const targetVer = versionStatus.latestVersion || '1.0.0';
         const snoozeUntil = Date.now() + days * 24 * 60 * 60 * 1000;
         localStorage.setItem('jam_snoozed_update_until', snoozeUntil.toString());
         localStorage.setItem('jam_dismissed_update_version', targetVer);

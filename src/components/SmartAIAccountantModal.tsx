@@ -1094,7 +1094,7 @@ export default function SmartAIAccountantModal({
                 <ShieldCheck size={13} className="text-emerald-400" />
                 <span>نظام عزل ومحاسبة</span>
               </span>
-              <span className="font-mono text-emerald-400">v4.0.1</span>
+              <span className="font-mono text-emerald-400">v1.0.0</span>
             </div>
 
             {isSpeaking && !isCallMode && (

@@ -10,8 +10,8 @@ interface LiveHotFixPublisherModalProps {
 }
 
 export default function LiveHotFixPublisherModal({ isOpen, onClose }: LiveHotFixPublisherModalProps) {
-  const [patchId, setPatchId] = useState('v4.0.1-hotfix-patch1');
-  const [version, setVersion] = useState('4.0.1');
+  const [patchId, setPatchId] = useState('v1.0.0-hotfix-patch1');
+  const [version, setVersion] = useState('1.0.0');
   const [title, setTitle] = useState('تحديث حار فوري: عزل الصيانة وتحديث سندات الاستلام وسرعة المزامنة');
   const [description, setDescription] = useState('إخفاء وحدات الصيانة والأرصدة لتجار جملة الجملة والمستوردين تلقائياً، وتحديث وضغط سندات الصيانة وتسهيل الإدخال السريع بدون تنزيل أي تطبيق جديد.');
   

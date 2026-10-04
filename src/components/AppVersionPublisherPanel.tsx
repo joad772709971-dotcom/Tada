@@ -22,8 +22,8 @@ import { db } from '../firebase';
 import LiveHotFixPublisherModal from './LiveHotFixPublisherModal';
 
 export default function AppVersionPublisherPanel() {
-  const [latestVersion, setLatestVersion] = useState('4.0.1');
-  const [minSupportedVersion, setMinSupportedVersion] = useState('2.0.0');
+  const [latestVersion, setLatestVersion] = useState('1.0.0');
+  const [minSupportedVersion, setMinSupportedVersion] = useState('1.0.0');
   const [releaseNotes, setReleaseNotes] = useState('1. إخفاء وتأمين وحدات الصيانة والأرصدة لتجار جملة الجملة والمستوردين.\n2. تحسين وتصغير مقاس سند الصيانة وتقليص خانات الإدخال بشبكة مدمجة.\n3. التوافق العكسي التام ودعم التحديث الفوري المباشر OTA بدون تنزيل.');
   const [updateUrlApk, setUpdateUrlApk] = useState('https://github.com/joad772709971-dotcom/Tada/releases/latest/download/Jam-Store.apk');
   const [updateUrlExe, setUpdateUrlExe] = useState('https://github.com/joad772709971-dotcom/Tada/releases/latest/download/Jam-Store-Setup.exe');

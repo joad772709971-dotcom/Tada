@@ -1930,17 +1930,17 @@ export default function SuperAdmin({ profile }: SuperAdminProps) {
 
   useEffect(() => {
     if (appConfigData) {
-      setTempVersion(appConfigData.latestVersion || '2.5.0');
+      setTempVersion(appConfigData.latestVersion || '1.0.0');
       setTempIsMandatory(!!appConfigData.isMandatory);
       setTempUpdateUrl(appConfigData.updateUrl || '');
       setTempWhatsNew(appConfigData.whatsNew || '');
 
-      setTempVersionApk(appConfigData.latestVersion_apk || appConfigData.latestVersion || '2.5.0');
+      setTempVersionApk(appConfigData.latestVersion_apk || appConfigData.latestVersion || '1.0.0');
       setTempIsMandatoryApk(!!appConfigData.isMandatory_apk);
       setTempUpdateUrlApk(appConfigData.updateUrl_apk || appConfigData.updateUrl || '');
       setTempWhatsNewApk(appConfigData.whatsNew_apk || appConfigData.whatsNew || '');
 
-      setTempVersionExe(appConfigData.latestVersion_exe || appConfigData.latestVersion || '2.5.0');
+      setTempVersionExe(appConfigData.latestVersion_exe || appConfigData.latestVersion || '1.0.0');
       setTempIsMandatoryExe(!!appConfigData.isMandatory_exe);
       setTempUpdateUrlExe(appConfigData.updateUrl_exe || appConfigData.updateUrl || '');
       setTempWhatsNewExe(appConfigData.whatsNew_exe || appConfigData.whatsNew || '');

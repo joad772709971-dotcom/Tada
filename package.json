@@ -3,7 +3,7 @@
   "description": "JAM System Pro Desktop Application",
   "author": "JAM System Pro",
   "private": true,
-  "version": "4.0.1",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",

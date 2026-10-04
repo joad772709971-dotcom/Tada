@@ -65,10 +65,10 @@ import { FirebaseProjectRouter } from './services/FirebaseProjectRouter';
 import { validateUserVariantAccess, getCurrentVariant, APP_VARIANTS } from './services/variantEngine';
 import { antiTamperLicenseVault } from './services/AntiTamperLicenseVault';
 
-const CURRENT_VERSION = "4.0.1";
-const CURRENT_VERSION_APK = "4.0.1";
-const CURRENT_VERSION_EXE = "4.0.1";
-const CURRENT_VERSION_WEB = "4.0.1";
+const CURRENT_VERSION = "1.0.0";
+const CURRENT_VERSION_APK = "1.0.0";
+const CURRENT_VERSION_EXE = "1.0.0";
+const CURRENT_VERSION_WEB = "1.0.0";
 
 // Smart Multi-Layered Platform & Build Sensing
 const getPlatformType = (): 'apk' | 'exe' | 'web' => {

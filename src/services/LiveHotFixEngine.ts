@@ -519,7 +519,7 @@ class LiveHotFixEngineClass {
       this.isApprovalModalOpen = false;
       try {
         localStorage.setItem(`jam_postponed_patch_${patch.patchId}`, 'true');
-        const ver = patch.version || '4.0.1';
+        const ver = patch.version || '1.0.0';
         localStorage.setItem('jam_dismissed_update_version', ver);
         localStorage.setItem('jam_ota_snooze_until', (Date.now() + 7 * 24 * 3600 * 1000).toString());
       } catch (e) {}
@@ -532,7 +532,7 @@ class LiveHotFixEngineClass {
       try {
         localStorage.setItem(`jam_postponed_patch_${patch.patchId}`, 'true');
         localStorage.setItem('jam_last_applied_patch_id', patch.patchId);
-        const ver = patch.version || '4.0.1';
+        const ver = patch.version || '1.0.0';
         localStorage.setItem('jam_installed_update_version', ver);
         localStorage.setItem('jam_dismissed_update_version', ver);
         localStorage.setItem('jam_ota_snooze_until', (Date.now() + 30 * 24 * 3600 * 1000).toString());
@@ -548,7 +548,7 @@ class LiveHotFixEngineClass {
   public async performApprovedReload(patch: HotFixPatchPayload): Promise<void> {
     if (typeof window === 'undefined') return;
 
-    const ver = patch.version || '4.0.1';
+    const ver = patch.version || '1.0.0';
     localStorage.setItem('jam_last_applied_patch_id', patch.patchId);
     localStorage.setItem(`jam_postponed_patch_${patch.patchId}`, 'true');
     localStorage.setItem('jam_last_applied_patch_time', patch.timestamp || new Date().toISOString());
